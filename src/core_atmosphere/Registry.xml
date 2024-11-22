@@ -242,6 +242,11 @@
                      description="Scale eddy viscosities with mesh-density function for horizontal diffusion"
                      possible_values=".true. or .false."/>
 
+                <nml_option name="config_deep_atmosphere" type="logical" default_value="false" in_defaults="true"
+                     units="-"
+                     description="Deep atmosphere configuration"
+                     possible_values=".true. or .false."/>
+
                 <nml_option name="config_num_halos" type="integer" default_value="2" in_defaults="false"
                      units="-"
                      description="Number of halo layers for fields"
