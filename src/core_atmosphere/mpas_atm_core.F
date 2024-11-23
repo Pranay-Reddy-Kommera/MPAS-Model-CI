@@ -469,7 +469,9 @@ module atm_core
       call atm_adv_coef_compression(mesh)
 
       call atm_couple_coef_3rd_order(mesh, block % configs)
-      
+
+      call atm_compute_nondimensional_radii(mesh, block % configs)
+
       call mpas_pool_get_dimension(state, 'nVertices', nVertices)
       call mpas_pool_get_dimension(state, 'nVertLevels', nVertLevels)
 
@@ -567,8 +569,6 @@ module atm_core
 #endif
    
       call atm_compute_mesh_scaling(mesh, block % configs)
-
-      call atm_compute_nondimensional_radii(mesh, block % configs)
 
       call atm_compute_damping_coefs(mesh, block % configs)
 
