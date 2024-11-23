@@ -5069,7 +5069,7 @@ module atm_time_integration
 !DIR$ IVDEP
          do k=1,nVertLevels
 !            tend_u(k,iEdge) = tend_u(k,iEdge) + tend_u_euler(k,iEdge)
-            tend_u(k,iEdge) = tend_u(k,iEdge) + tend_u_euler(k,iEdge) + tend_ru_physics(k,iEdge)
+            tend_u(k,iEdge) = tend_u(k,iEdge) + tend_u_euler(k,iEdge) + tend_ru_physics(k,iEdge)*rTildeEdge(k,iEdge)
          end do
       end do
 
