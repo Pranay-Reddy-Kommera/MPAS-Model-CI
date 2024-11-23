@@ -1765,6 +1765,7 @@ module atm_time_integration
 
       real (kind=RKIND), dimension(:,:), pointer :: zz, cqw, p, t, rb, rtb, pb, rt
       real (kind=RKIND), dimension(:,:), pointer :: cofwr, cofwz, coftz, cofwt, a_tri, alpha_tri, gamma_tri
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeCell, rTildeLayer
       real (kind=RKIND), dimension(:), pointer :: cofrz, rdzw, fzm, fzp, rdzu
       real (kind=RKIND), dimension(:,:,:), pointer :: scalars
 
@@ -1780,6 +1781,9 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'fzm', fzm)
       call mpas_pool_get_array(mesh, 'fzp', fzp)
       call mpas_pool_get_array(mesh, 'zz', zz)
+
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeLayer', rTildeLayer)
 
       call mpas_pool_get_array(diag, 'cqw', cqw)
       call mpas_pool_get_array(diag, 'exner', p)
@@ -1807,6 +1811,7 @@ module atm_time_integration
 
       call atm_compute_vert_imp_coefs_work(nCells, moist_start, moist_end, dts, epssm, &
                                    zz, cqw, p, t, rb, rtb, pb, rt, cofwr, cofwz, coftz, cofwt, &
+                                   rTildeCell, rTildeLayer, &
                                    a_tri, alpha_tri, gamma_tri, cofrz, rdzw, fzm, fzp, rdzu, scalars, &
                                    cellStart, cellEnd, edgeStart, edgeEnd, &
                                    cellSolveStart, cellSolveEnd, edgeSolveStart, edgeSolveEnd)
@@ -1817,6 +1822,7 @@ module atm_time_integration
 
    subroutine atm_compute_vert_imp_coefs_work(nCells, moist_start, moist_end, dts, epssm, &
                                    zz, cqw, p, t, rb, rtb, pb, rt, cofwr, cofwz, coftz, cofwt, &
+                                   rTildeCell, rTildeLayer, &
                                    a_tri, alpha_tri, gamma_tri, cofrz, rdzw, fzm, fzp, rdzu, scalars, &
                                    cellStart, cellEnd, edgeStart, edgeEnd, &
                                    cellSolveStart, cellSolveEnd, edgeSolveStart, edgeSolveEnd)
@@ -1848,6 +1854,8 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: a_tri
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: alpha_tri
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: gamma_tri
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: rTildeCell
+      real (kind=RKIND), dimension(nVertLevels+1,nCells+1) :: rTildeLayer
       real (kind=RKIND), dimension(nVertLevels) :: cofrz
       real (kind=RKIND), dimension(nVertLevels) :: rdzw
       real (kind=RKIND), dimension(nVertLevels) :: fzm
@@ -2157,6 +2165,8 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:), pointer :: rw
       real (kind=RKIND), dimension(:,:), pointer :: rw_save
 
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeCell, rTildeEdge
+
       real (kind=RKIND), dimension(:), pointer :: fzm, fzp, rdzw, dcEdge, invDcEdge, invAreaCell, cofrz, dvEdge
 
       integer, dimension(:), pointer :: nEdgesOnCell
@@ -2227,6 +2237,9 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'cf2', cf2)
       call mpas_pool_get_array(mesh, 'cf3', cf3)
 
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeEdge', rTildeEdge)
+
 ! redefine ru_p to be perturbation from time t, change 3b ! temporary
       call mpas_pool_get_array(diag, 'ru', ru)
       call mpas_pool_get_array(diag, 'ru_save', ru_save)
@@ -2244,6 +2257,7 @@ module atm_time_integration
                                    tend_rw, zgrid, cofwr, cofwz, w, ru, ru_save, rw, rw_save, fzm, fzp, rdzw, dcEdge, invDcEdge, &
                                    invAreaCell, cofrz, dvEdge, nEdgesOnCell, cellsOnEdge, edgesOnCell, edgesOnCell_sign, &
                                    dts, small_step, epssm, cf1, cf2, cf3, &
+                                   rTildeCell, rTildeEdge, &
                                    specZoneMaskEdge, specZoneMaskCell &
                                    )
 
@@ -2257,6 +2271,7 @@ module atm_time_integration
                                    tend_rw, zgrid, cofwr, cofwz, w, ru, ru_save, rw, rw_save, fzm, fzp, rdzw, dcEdge, invDcEdge, &
                                    invAreaCell, cofrz, dvEdge, nEdgesOnCell, cellsOnEdge, edgesOnCell, edgesOnCell_sign, &
                                    dts, small_step, epssm, cf1, cf2, cf3, &
+                                   rTildeCell, rTildeEdge, &
                                    specZoneMaskEdge, specZoneMaskCell &
                                    )
 
@@ -2306,6 +2321,9 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: ru_save
       real (kind=RKIND), dimension(nVertLevels+1,nCells+1) :: rw
       real (kind=RKIND), dimension(nVertLevels+1,nCells+1) :: rw_save
+
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: rTildeCell
+      real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: rTildeEdge
 
       real (kind=RKIND), dimension(nVertLevels) :: fzm
       real (kind=RKIND), dimension(nVertLevels) :: fzp
@@ -2543,6 +2561,7 @@ module atm_time_integration
       integer, intent(in) :: edgeStart, edgeEnd
 
       real (kind=RKIND), dimension(:,:), pointer :: theta_m, ru_p, rtheta_pp, rtheta_pp_old
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeCell, rTildeEdge
 !      real (kind=RKIND), dimension(:), pointer :: dcEdge
       real (kind=RKIND), pointer :: smdiv, config_len_disp
       real (kind=RKIND), dimension(:), pointer :: specZoneMaskEdge
@@ -2556,6 +2575,8 @@ module atm_time_integration
 
       call mpas_pool_get_array(mesh, 'cellsOnEdge', cellsOnEdge)
       call mpas_pool_get_array(mesh, 'specZoneMaskEdge', specZoneMaskEdge)
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeEdge', rTildeEdge)
 !      call mpas_pool_get_array(mesh, 'dcEdge', dcEdge)
       call mpas_pool_get_array(state, 'theta_m', theta_m, 1)
       call mpas_pool_get_array(diag, 'rtheta_pp', rtheta_pp)
@@ -2628,6 +2649,9 @@ module atm_time_integration
                                                     rho_pp, rho_zz, rho_base, ruAvg, ru_save, ru_p, u, ru, &
                                                     exner, exner_base, rtheta_base, pressure_p,         &
                                                     zz, theta_m, pressure_b
+
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeCell, rTildeEdge
+
       real (kind=RKIND), dimension(:,:,:), pointer :: scalars
       real (kind=RKIND), dimension(:), pointer :: fzm, fzp
       real (kind=RKIND), dimension(:,:,:), pointer :: zb, zb3, zb_cell, zb3_cell
@@ -2698,6 +2722,8 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'cf2', cf2)
       call mpas_pool_get_array(mesh, 'cf3', cf3)
 
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeEdge', rTildeEdge)
 
       call atm_recover_large_step_variables_work(nCells, nEdges, nCellsSolve, nEdgesSolve, dt, ns, rk_step, &
                              wwAvg, rw_save, w, rw, rw_p, rtheta_p, rtheta_pp, rtheta_p_save, rt_diabatic_tend, rho_p, &
@@ -2705,6 +2731,7 @@ module atm_time_integration
                              rtheta_base, pressure_p, zz, theta_m, pressure_b, scalars, fzm, fzp, &
                              zb, zb3, zb_cell, zb3_cell, edgesOnCell_sign, cellsOnEdge, edgesOnCell, nEdgesOnCell, &
                              cf1, cf2, cf3, &
+                             rTildeCell, rTildeEdge, &
                              bdyMaskCell, &  !  addition for regional_MPAS
                              cellStart, cellEnd, vertexStart, vertexEnd, edgeStart, edgeEnd, &
                              cellSolveStart, cellSolveEnd, vertexSolveStart, vertexSolveEnd, edgeSolveStart, edgeSolveEnd)
@@ -2718,6 +2745,7 @@ module atm_time_integration
                              rtheta_base, pressure_p, zz, theta_m, pressure_b, scalars, fzm, fzp, &
                              zb, zb3, zb_cell, zb3_cell, edgesOnCell_sign, cellsOnEdge, edgesOnCell, nEdgesOnCell, &
                              cf1, cf2, cf3, &
+                             rTildeCell, rTildeEdge, &
                              bdyMaskCell, &  ! addition for regional_MPAS
                              cellStart, cellEnd, vertexStart, vertexEnd, edgeStart, edgeEnd, &
                              cellSolveStart, cellSolveEnd, vertexSolveStart, vertexSolveEnd, edgeSolveStart, edgeSolveEnd)
@@ -2762,6 +2790,8 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: zz
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: theta_m
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: pressure_b
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: rTildeCell
+      real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: rTildeEdge
       real (kind=RKIND), dimension(num_scalars,nVertLevels,nCells+1) :: scalars
       real (kind=RKIND), dimension(nVertLevels) :: fzm
       real (kind=RKIND), dimension(nVertLevels) :: fzp
@@ -4290,6 +4320,8 @@ module atm_time_integration
 
       real(kind=RKIND), dimension(:,:), pointer :: tend_w_pgf, tend_w_buoy
 
+      real(kind=RKIND), dimension(:,:), pointer :: rTildeCell, rTildeLayer, rTildeEdge
+
       real (kind=RKIND), pointer :: coef_3rd_order, c_s
       logical, pointer :: config_mix_full
       character (len=StrKIND), pointer :: config_horiz_mixing
@@ -4303,6 +4335,8 @@ module atm_time_integration
 
       real (kind=RKIND), pointer :: config_mpas_cam_coef
       logical, pointer :: config_rayleigh_damp_u
+      logical, pointer :: config_deep_atmosphere
+      logical, pointer :: on_a_sphere
       real (kind=RKIND), pointer :: config_rayleigh_damp_u_timescale_days
       integer, pointer :: config_number_rayleigh_damp_u_levels, config_number_cam_damping_levels
 
@@ -4326,6 +4360,8 @@ module atm_time_integration
       call mpas_pool_get_config(configs, 'config_rayleigh_damp_u_timescale_days', config_rayleigh_damp_u_timescale_days)
       call mpas_pool_get_config(configs, 'config_number_rayleigh_damp_u_levels', config_number_rayleigh_damp_u_levels)
       call mpas_pool_get_config(configs, 'config_number_cam_damping_levels', config_number_cam_damping_levels)
+      call mpas_pool_get_config(configs, 'config_deep_atmosphere', config_deep_atmosphere)
+      call mpas_pool_get_config(mesh, 'on_a_sphere', on_a_sphere)
 
       call mpas_pool_get_array(state, 'rho_zz', rho_zz, 2)
       call mpas_pool_get_array(state, 'u', u, 2)
@@ -4432,6 +4468,10 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'cf2', cf2)
       call mpas_pool_get_array(mesh, 'cf3', cf3)
 
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeLayer', rTildeLayer)
+      call mpas_pool_get_array(mesh, 'rTildeEdge', rTildeEdge)
+
       call atm_compute_dyn_tend_work(nCells, nEdges, nVertices, nVertLevels, &
          nCellsSolve, nEdgesSolve, vertexDegree, maxEdges, maxEdges2, num_scalars, moist_start, moist_end, &
          fEdge, dvEdge, dcEdge, invDcEdge, invDvEdge, invAreaCell, invAreaTriangle, meshScalingDel2, meshScalingDel4, &
@@ -4443,12 +4483,14 @@ module atm_time_integration
          cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnEdge, cellsOnCell, edgesOnVertex, nEdgesOnCell, nEdgesOnEdge, &
          latCell, latEdge, angleEdge, u_init, v_init, advCellsForEdge, nAdvCellsForEdge, adv_coefs, adv_coefs_3rd, &
          rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, defc_a, defc_b, &
+         rTildeCell, rTildeLayer, rTildeEdge, &
          tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_horiz_mixing, config_del4u_div_factor, &
          config_h_mom_eddy_visc2, config_v_mom_eddy_visc2, config_h_theta_eddy_visc2, config_v_theta_eddy_visc2, &
          config_h_theta_eddy_visc4, config_h_mom_eddy_visc4, config_visc4_2dsmag, config_len_disp, rk_step, dt, &
          config_mpas_cam_coef, &
          config_rayleigh_damp_u, config_rayleigh_damp_u_timescale_days, & 
          config_number_rayleigh_damp_u_levels, config_number_cam_damping_levels, &
+         config_deep_atmosphere, on_a_sphere, &
          rthdynten, &
          cellStart, cellEnd, vertexStart, vertexEnd, edgeStart, edgeEnd, &
          cellSolveStart, cellSolveEnd, vertexSolveStart, vertexSolveEnd, edgeSolveStart, edgeSolveEnd)
@@ -4467,12 +4509,14 @@ module atm_time_integration
       cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnEdge, cellsOnCell, edgesOnVertex, nEdgesOnCell, nEdgesOnEdge, &
       latCell, latEdge, angleEdge, u_init, v_init, advCellsForEdge, nAdvCellsForEdge, adv_coefs, adv_coefs_3rd, &
       rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, defc_a, defc_b, &
+      rTildeCell, rTildeLayer, rTildeEdge, &
       tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_horiz_mixing, config_del4u_div_factor, &
       config_h_mom_eddy_visc2, config_v_mom_eddy_visc2, config_h_theta_eddy_visc2, config_v_theta_eddy_visc2, &
       config_h_theta_eddy_visc4, config_h_mom_eddy_visc4, config_visc4_2dsmag, config_len_disp, rk_step, dt, &
       config_mpas_cam_coef, &
       config_rayleigh_damp_u, config_rayleigh_damp_u_timescale_days, &
       config_number_rayleigh_damp_u_levels, config_number_cam_damping_levels, &
+      config_deep_atmosphere, on_a_sphere, &
       rthdynten, &
       cellStart, cellEnd, vertexStart, vertexEnd, edgeStart, edgeEnd, &
       cellSolveStart, cellSolveEnd, vertexSolveStart, vertexSolveEnd, edgeSolveStart, edgeSolveEnd)
@@ -4579,6 +4623,10 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels+1,nCells+1) :: tend_w_pgf
       real (kind=RKIND), dimension(nVertLevels+1,nCells+1) :: tend_w_buoy
 
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: rTildeCell
+      real (kind=RKIND), dimension(nVertLevels+1,nCells+1) :: rTildeLayer
+      real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: rTildeEdge
+
       real (kind=RKIND) :: coef_3rd_order, c_s
       logical :: config_mix_full
       character (len=StrKIND) :: config_horiz_mixing
@@ -4595,6 +4643,8 @@ module atm_time_integration
       real (kind=RKIND) :: config_mpas_cam_coef
 
       logical, intent(in) :: config_rayleigh_damp_u
+      logical, intent(in) :: config_deep_atmosphere
+      logical, intent(in) :: on_a_sphere
       real (kind=RKIND), intent(in) :: config_rayleigh_damp_u_timescale_days
       integer, intent(in) :: config_number_rayleigh_damp_u_levels, config_number_cam_damping_levels
 
@@ -4615,7 +4665,7 @@ module atm_time_integration
       real (kind=RKIND), dimension( nVertLevels ) :: ru_edge_w, q, u_mix
       real (kind=RKIND) :: theta_turb_flux, w_turb_flux, r
       real (kind=RKIND) :: scalar_weight
-      real (kind=RKIND) :: inv_r_earth
+      real (kind=RKIND) :: inv_r_earth, r_c
 
       real (kind=RKIND) :: invDt, flux, workpv
       real (kind=RKIND) :: edge_sign, pr_scale, r_dc, r_dv, u_mix_scale
@@ -5423,6 +5473,7 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:), pointer :: weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, &
                                                     vorticity, ke, pv_edge, pv_vertex, pv_cell, gradPVn, gradPVt, &
                                                     divergence
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeCell, rTildeEdge, rTildeVertex
       integer, dimension(:,:), pointer :: cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, edgesOnVertex, &
                                           kiteForCell, verticesOnCell
       real (kind=RKIND), dimension(:,:), pointer :: edgesOnVertex_sign, edgesOnCell_sign
@@ -5470,6 +5521,10 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'fVertex', fVertex)
       call mpas_pool_get_array(mesh, 'fEdge', fEdge)
 
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeEdge', rTildeEdge)
+      call mpas_pool_get_array(mesh, 'rTildeVertex', rTildeVertex)
+
       call mpas_pool_get_dimension(mesh, 'nCells', nCells)
       call mpas_pool_get_dimension(mesh, 'nEdges', nEdges)
       call mpas_pool_get_dimension(mesh, 'nVertices', nVertices)
@@ -5479,6 +5534,7 @@ module atm_time_integration
       call atm_compute_solve_diagnostics_work(nCells, nEdges, nVertices, &
                vertexDegree, dt, config_apvm_upwinding, &
                fVertex, fEdge, invAreaTriangle, invAreaCell, dvEdge, dcEdge, invDvEdge, invDcEdge, &
+               rTildeCell, rTildeEdge, rTildeVertex, &
                weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, vorticity, ke, pv_edge, pv_vertex, pv_cell, &
                gradPVn, gradPVt, divergence, cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, &
                edgesOnVertex, kiteForCell, verticesOnCell, edgesOnVertex_sign, edgesOnCell_sign, nEdgesOnCell, nEdgesOnEdge, &
@@ -5491,6 +5547,7 @@ module atm_time_integration
    subroutine atm_compute_solve_diagnostics_work(nCells, nEdges, nVertices, &
             vertexDegree, dt, config_apvm_upwinding, &
             fVertex, fEdge, invAreaTriangle, invAreaCell, dvEdge, dcEdge, invDvEdge, invDcEdge, &
+            rTildeCell, rTildeEdge, rTildeVertex, &
             weightsOnEdge, kiteAreasOnVertex, h_edge, h, u, v, vorticity, ke, pv_edge, pv_vertex, pv_cell, &
             gradPVn, gradPVt, divergence, cellsOnEdge, cellsOnVertex, verticesOnEdge, edgesOnCell, edgesOnEdge, &
             edgesOnVertex, kiteForCell, verticesOnCell, edgesOnVertex_sign, edgesOnCell_sign, nEdgesOnCell, nEdgesOnEdge, &
@@ -5528,6 +5585,9 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: gradPVn
       real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: gradPVt
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: divergence
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: rTildeCell
+      real (kind=RKIND), dimension(nVertLevels,nEdges+1) :: rTildeEdge
+      real (kind=RKIND), dimension(nVertLevels,nVertices+1) :: rTildeVertex
       integer, dimension(2,nEdges+1) :: cellsOnEdge
       integer, dimension(3,nVertices+1) :: cellsOnVertex
       integer, dimension(2,nEdges+1) :: verticesOnEdge
@@ -5840,6 +5900,8 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:), pointer :: pressure_base
       real (kind=RKIND), dimension(:,:), pointer :: exner
       real (kind=RKIND), dimension(:,:), pointer :: exner_base
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeCell
+      real (kind=RKIND), dimension(:,:), pointer :: rTildeEdge
       real (kind=RKIND), dimension(:), pointer :: fzm, fzp
       real (kind=RKIND), dimension(:,:,:), pointer :: zb, zb3, zb_cell, zb3_cell
 
@@ -5879,7 +5941,8 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'zb3', zb3)
       call mpas_pool_get_array(mesh, 'zb_cell', zb_cell)
       call mpas_pool_get_array(mesh, 'zb3_cell', zb3_cell)
-
+      call mpas_pool_get_array(mesh, 'rTildeCell', rTildeCell)
+      call mpas_pool_get_array(mesh, 'rTildeEdge', rTildeEdge)
 
       rcv = rgas / (cp-rgas)
       p0 = 1.e5  ! this should come from somewhere else...
