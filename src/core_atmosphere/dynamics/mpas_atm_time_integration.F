@@ -1895,7 +1895,7 @@ module atm_time_integration
 !DIR$ IVDEP
          do k=2,nVertLevels
             cofwz(k,iCell) = dtseps*c2*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))  &
-                 *rdzu(k)*cqw(k,iCell)*(fzm(k)*p (k,iCell)+fzp(k)*p (k-1,iCell))
+                 *rdzu(k)*cqw(k,iCell)*(fzm(k)*p (k,iCell)+fzp(k)*p (k-1,iCell))*rTildeLayer(k,iCell)**2
             coftz(k,iCell) = dtseps*   (fzm(k)*t (k,iCell)+fzp(k)*t (k-1,iCell))
          end do
          coftz(nVertLevels+1,iCell) = 0.0
@@ -1908,7 +1908,7 @@ module atm_time_integration
 !            end do
             qtotal = qtot(k,iCell)
 
-            cofwt(k,iCell) = .5*dtseps*rcv*zz(k,iCell)*gravity*rb(k,iCell)/(1.+qtotal)  &
+            cofwt(k,iCell) = .5*dtseps*rcv*zz(k,iCell)*gravity/rTildeCell(k,iCell)**2*rb(k,iCell)/(1.+qtotal)  &
                                 *p(k,iCell)/((rtb(k,iCell)+rt(k,iCell))*pb(k,iCell))
 !            cofwt(k,iCell) = 0.
          end do
@@ -2383,9 +2383,11 @@ module atm_time_integration
 
 !DIR$ IVDEP
               do k=1,nVertLevels
-                 pgrad = ((rtheta_pp(k,cell2)-rtheta_pp(k,cell1))*invDcEdge(iEdge) )/(.5*(zz(k,cell2)+zz(k,cell1)))
+                 pgrad = ((rtheta_pp(k,cell2)/rTildeCell(k,cell2)**2-rtheta_pp(k,cell1)/rTildeCell(k,cell1)**2)*invDcEdge(iEdge))&
+                         /(.5*(zz(k,cell2)+zz(k,cell1)))
                  pgrad = cqu(k,iEdge)*0.5*c2*(exner(k,cell1)+exner(k,cell2))*pgrad
-                 pgrad = pgrad + 0.5*zxu(k,iEdge)*gravity*(rho_pp(k,cell1)+rho_pp(k,cell2))
+                 pgrad = pgrad + 0.5*zxu(k,iEdge)*gravity/rTildeEdge(k,iEdge)**2 &
+                                 *(rho_pp(k,cell1)/rTildeCell(k,cell1)**2+rho_pp(k,cell2)/rTildeCell(k,cell2)**2)
                  ru_p(k,iEdge) = ru_p(k,iEdge) + dts*(tend_ru(k,iEdge) - (1.0_RKIND - specZoneMaskEdge(iEdge))*pgrad)
               end do
 
@@ -2483,12 +2485,10 @@ module atm_time_integration
 !DIR$ IVDEP
          do k=2, nVertLevels
             rw_p(k,iCell) = rw_p(k,iCell) +  dts*tend_rw(k,iCell)                       &
-                       - cofwz(k,iCell)*((zz(k  ,iCell)*ts(k)                           &
-                                     -zz(k-1,iCell)*ts(k-1))                            &
-                               +resm*(zz(k  ,iCell)*rtheta_pp(k  ,iCell)                &
-                                     -zz(k-1,iCell)*rtheta_pp(k-1,iCell)))              &
-                       - cofwr(k,iCell)*((rs(k)+rs(k-1))                                &
-                               +resm*(rho_pp(k,iCell)+rho_pp(k-1,iCell)))               &
+                       - cofwz(k,iCell)*( zz(k  ,iCell)*(ts(k  )+resm*rtheta_pp(k,  iCell))/rTildeCell(k  ,iCell)**2   &
+                                         -zz(k-1,iCell)*(ts(k-1)+resm*rtheta_pp(k-1,iCell))/rTildeCell(k-1,iCell)**2 ) &
+                       - cofwr(k,iCell)*((rs(k)/rTildeCell(k  ,iCell)**2+rs(k-1)/rTildeCell(k-1,iCell)**2)                                &
+                               +resm*(rho_pp(k,iCell)/rTildeCell(k  ,iCell)**2+rho_pp(k-1,iCell)/rTildeCell(k-1,iCell)**2))               &
                        + cofwt(k  ,iCell)*(ts(k  )+resm*rtheta_pp(k  ,iCell))           &
                        + cofwt(k-1,iCell)*(ts(k-1)+resm*rtheta_pp(k-1,iCell))
          end do
@@ -2610,10 +2610,10 @@ module atm_time_integration
 !!                                                      /(theta_m(k,cell1)+theta_m(k,cell2))
 
 !!  scaled 3d divergence damping
-               divCell1 = -(rtheta_pp(k,cell1)-rtheta_pp_old(k,cell1))
-               divCell2 = -(rtheta_pp(k,cell2)-rtheta_pp_old(k,cell2))
+               divCell1 = -(rtheta_pp(k,cell1)-rtheta_pp_old(k,cell1))/rTildeCell(k,cell1)**2
+               divCell2 = -(rtheta_pp(k,cell2)-rtheta_pp_old(k,cell2))/rTildeCell(k,cell2)**2
                ru_p(k,iEdge) = ru_p(k,iEdge) + coef_divdamp*(divCell2-divCell1)*(1.0_RKIND - specZoneMaskEdge(iEdge)) &
-                                                      /(theta_m(k,cell1)+theta_m(k,cell2))
+                                                      /(theta_m(k,cell1)+theta_m(k,cell2)) * rTildeEdge(k,iEdge)
 
             end do
          end if ! edges for block-owned cells
@@ -2860,9 +2860,9 @@ module atm_time_integration
                rtheta_p(k,iCell) = rtheta_p_save(k,iCell) + rtheta_pp(k,iCell) &
                                  - dt * rho_zz(k,iCell) * rt_diabatic_tend(k,iCell)
                theta_m(k,iCell) = (rtheta_p(k,iCell) + rtheta_base(k,iCell))/rho_zz(k,iCell)
-               exner(k,iCell) = (zz(k,iCell)*(rgas/p0)*(rtheta_p(k,iCell)+rtheta_base(k,iCell)))**rcv
+               exner(k,iCell) = (zz(k,iCell)/rTildeCell(k,iCell)**2*(rgas/p0)*(rtheta_p(k,iCell)+rtheta_base(k,iCell)))**rcv
                ! pressure_p is perturbation pressure
-               pressure_p(k,iCell) = zz(k,iCell) * rgas * (exner(k,iCell)*rtheta_p(k,iCell)+rtheta_base(k,iCell)  &
+               pressure_p(k,iCell) = zz(k,iCell) / rTildeCell(k,iCell)**2 * rgas * (exner(k,iCell)*rtheta_p(k,iCell)+rtheta_base(k,iCell)  &
                                                           * (exner(k,iCell)-exner_base(k,iCell)))
             end do
          else
@@ -2890,7 +2890,8 @@ module atm_time_integration
          do k = 1, nVertLevels
             ruAvg(k,iEdge) = ru_save(k,iEdge) + (ruAvg(k,iEdge) * invNs)
             ru(k,iEdge) = ru_save(k,iEdge) + ru_p(k,iEdge)
-            u(k,iEdge) = 2.*ru(k,iEdge)/(rho_zz(k,cell1)+rho_zz(k,cell2))
+            u(k,iEdge) = 2.*ru(k,iEdge)/(rho_zz(k,cell1)/rTildeCell(k,cell1)**2+rho_zz(k,cell2)/rTildeCell(k,cell2)**2) &
+                         /rTildeEdge(k,iEdge)
          end do
       end do
 
@@ -4611,7 +4612,7 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: t_init 
 
       real (kind=RKIND) :: cf1, cf2, cf3
-      real (kind=RKIND) :: prandtl_inv, r_areaCell, rgas_cprcv
+      real (kind=RKIND) :: prandtl_inv, r_areaCell!, rgas_cprcv ! not used
 
       real (kind=RKIND) :: r_earth
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: ur_cell
@@ -4689,7 +4690,11 @@ module atm_time_integration
 
       prandtl_inv = 1.0_RKIND / prandtl
       invDt = 1.0_RKIND / dt
-      inv_r_earth = 1.0_RKIND / r_earth
+      if (on_a_sphere) then
+         inv_r_earth = 1.0_RKIND / r_earth
+      else ! on a plane, r_earth -> infinity
+         inv_r_earth = 0.0_RKIND
+      endif
 
        v_mom_eddy_visc2   = config_v_mom_eddy_visc2
        v_theta_eddy_visc2 = config_v_theta_eddy_visc2
@@ -4783,13 +4788,13 @@ module atm_time_integration
       !
       if(rk_step == 1) then
 
-        rgas_cprcv = rgas*cp/cv
+        !rgas_cprcv = rgas*cp/cv ! not used
         do iCell = cellStart,cellEnd
 
 !DIR$ IVDEP
           do k = 1,nVertLevels
             tend_rho(k,iCell) = -h_divergence(k,iCell)-rdzw(k)*(rw(k+1,iCell)-rw(k,iCell)) + tend_rho_physics(k,iCell)
-            dpdz(k,iCell) = -gravity*(rb(k,iCell)*(qtot(k,iCell)) + rr_save(k,iCell)*(1.+qtot(k,iCell)))
+            dpdz(k,iCell) = -gravity/rTildeCell(k,iCell)**2*(rb(k,iCell)*(qtot(k,iCell)) + rr_save(k,iCell)*(1.+qtot(k,iCell)))
           end do
         end do
       end if
@@ -4811,7 +4816,7 @@ module atm_time_integration
 !DIR$ IVDEP
             do k=1,nVertLevels
                tend_u_euler(k,iEdge) =  - cqu(k,iEdge)*( (pp(k,cell2)-pp(k,cell1))*invDcEdge(iEdge)/(.5*(zz(k,cell2)+zz(k,cell1))) &
-                                              -0.5*zxu(k,iEdge)*(dpdz(k,cell1)+dpdz(k,cell2)) )
+                                              -0.5*zxu(k,iEdge)*(dpdz(k,cell1)+dpdz(k,cell2))/rTildeEdge(k,iEdge)**2 )
             end do
 
          end if
@@ -4832,7 +4837,7 @@ module atm_time_integration
 
 !DIR$ IVDEP
          do k=1,nVertLevels
-            tend_u(k,iEdge) = - rdzw(k)*(wduz(k+1)-wduz(k)) !  first use of tend_u
+            tend_u(k,iEdge) = - rdzw(k)*(wduz(k+1)-wduz(k))/rTildeEdge(k,iEdge) !  first use of tend_u
          end do
 
          ! Next, nonlinear Coriolis term (q) following Ringler et al JCP 2009
@@ -4853,18 +4858,22 @@ module atm_time_integration
 
             ! horizontal ke gradient and vorticity terms in the vector invariant formulation
             ! of the horizontal momentum equation
-            tend_u(k,iEdge) = tend_u(k,iEdge) + rho_edge(k,iEdge)* (q(k) - (ke(k,cell2) - ke(k,cell1))       &
-                                                                 * invDcEdge(iEdge))                            &
-                                             - u(k,iEdge)*0.5*(h_divergence(k,cell1)+h_divergence(k,cell2)) 
-#ifdef CURVATURE
-            ! curvature terms for the sphere
-            tend_u(k,iEdge) = tend_u(k,iEdge) &
-                             - 2.*omega*cos(angleEdge(iEdge))*cos(latEdge(iEdge))  &
-                               *rho_edge(k,iEdge)*.25*(w(k,cell1)+w(k+1,cell1)+w(k,cell2)+w(k+1,cell2))          & 
-                             - u(k,iEdge)*.25*(w(k+1,cell1)+w(k,cell1)+w(k,cell2)+w(k+1,cell2))                  &
-                               *rho_edge(k,iEdge) * inv_r_earth
-#endif
+            tend_u(k,iEdge) = tend_u(k,iEdge) + 0.5 * (rho_zz(k,cell1)/rTildeCell(k,cell1)**2 &
+                                                      +rho_zz(k,cell2)/rTildeCell(k,cell2)**2) &
+                                                    * (q(k) - (ke(k,cell2)-ke(k,cell1))*invDcEdge(iEdge)) &
+                                             - u(k,iEdge)*0.5*(h_divergence(k,cell1)+h_divergence(k,cell2))/rTildeEdge(k,iEdge)
          end do
+
+         if (config_deep_atmosphere) then
+            do k=1,nVertLevels
+               tend_u(k,iEdge) = tend_u(k,iEdge) + (                                               &
+                                - 2.*omega*cos(angleEdge(iEdge))*cos(latEdge(iEdge))               &
+                                  *.25*(w(k,cell1)+w(k+1,cell1)+w(k,cell2)+w(k+1,cell2))           & 
+                                - u(k,iEdge)*.25*(w(k+1,cell1)+w(k,cell1)+w(k,cell2)+w(k+1,cell2)) &
+                                  * inv_r_earth / rTildeEdge(k,iEdge) )                            &
+                                   * rho_edge(k,iEdge) / rTildeEdge(k,iEdge)
+            end do
+         endif
 
       end do
 
@@ -5102,22 +5111,6 @@ module atm_time_integration
          end do
       end do
 
-#ifdef CURVATURE
-      do iCell = cellSolveStart, cellSolveEnd
-!DIR$ IVDEP
-         do k=2,nVertLevels
-            tend_w(k,iCell) = tend_w(k,iCell) + (rho_zz(k,iCell)*fzm(k)+rho_zz(k-1,iCell)*fzp(k))*          &
-                                      ( (fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))**2.             &
-                                       +(fzm(k)*vr_cell(k,iCell)+fzp(k)*vr_cell(k-1,iCell))**2. )/r_earth   &
-                                + 2.*omega*cos(latCell(iCell))                                              &
-                                       *(fzm(k)*ur_cell(k,iCell)+fzp(k)*ur_cell(k-1,iCell))                 &
-                                       *(rho_zz(k,iCell)*fzm(k)+rho_zz(k-1,iCell)*fzp(k))
-
-         end do
-      end do
-#endif
-
-
       !
       !  horizontal mixing for w - we could combine this with advection directly (i.e. as a turbulent flux),
       !  but here we can also code in hyperdiffusion if we wish (2nd order at present)
@@ -5218,12 +5211,28 @@ module atm_time_integration
 !DIR$ IVDEP
             do k=2,nVertLevels
               tend_w_euler(k,iCell) = tend_w_euler(k,iCell) - cqw(k,iCell)*(   &
-                                           rdzu(k)*(pp(k,iCell)-pp(k-1,iCell)) &
+                                           rdzu(k)*(pp(k,iCell)-pp(k-1,iCell))*rTildeLayer(k,iCell)**2 &
                                          - (fzm(k)*dpdz(k,iCell) + fzp(k)*dpdz(k-1,iCell)) )  ! dpdz is the buoyancy term here.
             end do
           end if
 
       end do
+
+      if (config_deep_atmosphere) then
+         do iCell = cellSolveStart, cellSolveEnd
+!DIR$ IVDEP
+            do k=2,nVertLevels
+               r_c = rTildeLayer(k,iCell)
+               tend_w(k,iCell) = tend_w(k,iCell) + (r_c**2)*(                                                 &
+                                    fzm(k)*( (ur_cell(k  ,iCell)**2 + vr_cell(k  ,iCell)**2)*inv_r_earth/r_c  &
+                                              + 2.*omega*cos(latCell(iCell))*ur_cell(k  ,iCell))              &
+                                                       *rho_zz(k  ,iCell)/rTildeCell(k  ,iCell)**2            &
+                                   +fzp(k)*( (ur_cell(k-1,iCell)**2 + vr_cell(k-1,iCell)**2)*inv_r_earth/r_c  &
+                                              + 2.*omega*cos(latCell(iCell))*ur_cell(k-1,iCell))              &
+                                                       *rho_zz(k-1,iCell)/rTildeCell(k-1,iCell)**2 )
+            end do
+         end do
+      endif
 
       if (rk_step == 1) then
 
@@ -5648,12 +5657,12 @@ module atm_time_integration
             s = edgesOnVertex_sign(i,iVertex) * dcEdge(iEdge)
 !DIR$ IVDEP
             do k=1,nVertLevels
-               vorticity(k,iVertex) = vorticity(k,iVertex) + s * u(k,iEdge)
+               vorticity(k,iVertex) = vorticity(k,iVertex) + s * u(k,iEdge) * rTildeEdge(k,iEdge)
             end do
          end do
 !DIR$ IVDEP
          do k=1,nVertLevels
-            vorticity(k,iVertex) = vorticity(k,iVertex) * invAreaTriangle(iVertex)
+            vorticity(k,iVertex) = vorticity(k,iVertex) * invAreaTriangle(iVertex) / rTildeVertex(k,iVertex)**2
          end do
       end do
 
@@ -5668,12 +5677,12 @@ module atm_time_integration
             s = edgesOnCell_sign(i,iCell) * dvEdge(iEdge)
 !DIR$ IVDEP
             do k=1,nVertLevels
-              divergence(k,iCell) = divergence(k,iCell) + s * u(k,iEdge)
+              divergence(k,iCell) = divergence(k,iCell) + s * u(k,iEdge) * rTildeEdge(k,iEdge)
             end do
          end do
          r = invAreaCell(iCell)
          do k = 1,nVertLevels
-            divergence(k,iCell) = divergence(k,iCell) * r
+            divergence(k,iCell) = divergence(k,iCell) * r / rTildeCell(k,iCell)**2
          end do
       end do
 
@@ -5950,7 +5959,7 @@ module atm_time_integration
       do iCell=cellStart,cellEnd
          do k=1,nVertLevels
             theta_m(k,iCell) = theta(k,iCell) * (1._RKIND + rvord * scalars(index_qv,k,iCell))
-            rho_zz(k,iCell) = rho(k,iCell) / zz(k,iCell)
+            rho_zz(k,iCell) = rho(k,iCell) / zz(k,iCell) * rTildeCell(k,iCell)**2
          end do
       end do
 
@@ -5960,7 +5969,8 @@ module atm_time_integration
          cell1 = cellsOnEdge(1,iEdge)
          cell2 = cellsOnEdge(2,iEdge)
          do k=1,nVertLevels
-            ru(k,iEdge) = 0.5 * u(k,iEdge) * (rho_zz(k,cell1) + rho_zz(k,cell2))
+            ru(k,iEdge) = 0.5 * u(k,iEdge) * rTildeEdge(k,iEdge) * (rho_zz(k,cell1) / rTildeCell(k,cell1)**2 &
+                                                                  + rho_zz(k,cell2) / rTildeCell(k,cell2)**2)
          end do
       end do
 
@@ -6013,18 +6023,18 @@ module atm_time_integration
 
       do iCell=cellStart,cellEnd
          do k=1,nVertLevels
-            exner(k,iCell) = (zz(k,iCell) * (rgas/p0) * (rtheta_p(k,iCell) + rtheta_base(k,iCell)))**rcv
-            exner_base(k,iCell) = (zz(k,iCell) * (rgas/p0) * (rtheta_base(k,iCell)))**rcv  ! WCS addition 20180403
+            exner(k,iCell) = (zz(k,iCell) / rTildeCell(k,iCell)**2 * (rgas/p0) * (rtheta_p(k,iCell) + rtheta_base(k,iCell)))**rcv
+            exner_base(k,iCell) = (zz(k,iCell) / rTildeCell(k,iCell)**2 * (rgas/p0) * (rtheta_base(k,iCell)))**rcv  ! WCS addition 20180403
          end do
       end do
 
       do iCell=cellStart,cellEnd
          do k=1,nVertLevels
-            pressure_p(k,iCell) = zz(k,iCell) * rgas &
+            pressure_p(k,iCell) = zz(k,iCell) / rTildeCell(k,iCell)**2 * rgas &
                                                * (  exner(k,iCell) * rtheta_p(k,iCell) &
                                                   + rtheta_base(k,iCell) * (exner(k,iCell) - exner_base(k,iCell)) &
                                                  )
-            pressure_base(k,iCell) = zz(k,iCell) * rgas * exner_base(k,iCell) * rtheta_base(k,iCell)      ! WCS addition 20180403
+            pressure_base(k,iCell) = zz(k,iCell) / rTildeCell(k,iCell)**2 * rgas * exner_base(k,iCell) * rtheta_base(k,iCell)      ! WCS addition 20180403
          end do
       end do
 
