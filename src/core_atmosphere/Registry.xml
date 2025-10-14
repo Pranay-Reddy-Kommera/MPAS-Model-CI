@@ -298,17 +298,17 @@
                      description="Value of epssm below transition zone"
                      possible_values="Positive real values between 0 and 1"/>
 
-                <nml_option name="config_epssm_maximum" type="real" default_value="0.1"
+                <nml_option name="config_epssm_maximum" type="real" default_value="0.5"
                      units="-"
                      description="Value of epssm above transition zone"
                      possible_values="Positive real values between 0 and 1"/>
 
-                <nml_option name="config_epssm_transition_bottom_z" type="real" default_value="10000."
+                <nml_option name="config_epssm_transition_bottom_z" type="real" default_value="30000."
                      units="m"
                      description="Height MSL of bottom of transition zone for epssm"
                      possible_values="Positive real values"/>
 
-                <nml_option name="config_epssm_transition_top_z" type="real" default_value="20000."
+                <nml_option name="config_epssm_transition_top_z" type="real" default_value="50000."
                      units="m"
                      description="Height MSL of top of transition zone for epssm"
                      possible_values="Positive real values"/>
