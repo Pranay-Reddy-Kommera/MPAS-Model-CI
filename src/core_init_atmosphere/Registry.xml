@@ -225,6 +225,16 @@
                      description="Model top height"
                      possible_values="Positive real values"/>
 
+                <nml_option name="config_hybrid_coordinate"       type="logical"       default_value="true"
+                     units="-"
+                     description="Whether to employ a hybrid vertical coordinate"
+                     possible_values="true or false"/>
+
+                <nml_option name="config_hybrid_top_z"       type="real"       default_value="30000.0"
+                     units="-"
+                     description="Height at which coordinate surfaces become constant height surfaces"
+                     possible_values="Positive real values"/>
+
                 <nml_option name="config_nsmterrain"            type="integer"       default_value="1"
                      units="-"
                      description="Number of smoothing passes to apply to the interpolated terrain field"
