@@ -484,7 +484,7 @@ module mpas_atm_dissipation_models
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: delsq_divergence
 
       real (kind=RKIND), dimension(nVertLevels), intent(in) :: u_init, v_init
-      real (kind=RKIND), dimension(nCells+1), intent(in) :: ustm
+      real (kind=RKIND), dimension(:), intent(in) :: ustm
 
       real (kind=RKIND), dimension(nVertLevels,nEdges+1), intent(out) :: tend_u_euler
 
@@ -964,7 +964,7 @@ module mpas_atm_dissipation_models
       real (kind=RKIND), dimension(nVertLevels,nCells+1), intent(in) :: eddy_visc_vert
       real (kind=RKIND), dimension(nVertLevels,nCells+1), intent(in) :: rho_zz
       real (kind=RKIND), dimension(nVertLevels,nEdges+1), intent(in) :: rho_edge
-      real (kind=RKIND), dimension(nCells+1), intent(in) :: hfx, qfx
+      real (kind=RKIND), dimension(:), intent(in) :: hfx, qfx
 
       real (kind=RKIND), dimension(nVertLevels,nCells+1), intent(inout) :: tend_theta_euler
 
