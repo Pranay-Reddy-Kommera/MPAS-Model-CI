@@ -778,7 +778,6 @@ module atm_advection
       real (kind=RKIND) :: pii
       real (kind=RKIND), dimension(25) :: xp, yp
       real (kind=RKIND) :: xe, ye
-
       
       real (kind=RKIND) :: length_scale
       integer, dimension(25) :: cell_list
@@ -789,6 +788,7 @@ module atm_advection
 
       logical, pointer :: is_periodic
       real(kind=RKIND), pointer :: x_period, y_period
+
 
       call mpas_pool_get_config(mesh, 'is_periodic', is_periodic)
       call mpas_pool_get_config(mesh, 'x_period', x_period)
@@ -1023,16 +1023,15 @@ module atm_advection
 
    end subroutine atm_initialize_deformation_weights
 
-!-----------------------
 
-      subroutine atm_init_test_coefs( deformation_coef_c2, deformation_coef_s2, &
-                                      deformation_coef_cs, deformation_coef_c,  &
-                                      deformation_coef_s,                       &
-                                      is_periodic, on_a_sphere,                 &
-                                      x_period, y_period,                       &
-                                      xEdge, yEdge, zEdge,                      &
-                                      xCell, yCell, zCell, nCells,              &
-                                      angleEdge, nEdgesOnCell, edgesOnCell )
+   subroutine atm_init_test_coefs( deformation_coef_c2, deformation_coef_s2, &
+                                   deformation_coef_cs, deformation_coef_c,  &
+                                   deformation_coef_s,                       &
+                                   is_periodic, on_a_sphere,                 &
+                                   x_period, y_period,                       &
+                                   xEdge, yEdge, zEdge,                      &
+                                   xCell, yCell, zCell, nCells,              &
+                                   angleEdge, nEdgesOnCell, edgesOnCell )
 
       implicit none
 
@@ -1085,149 +1084,149 @@ module atm_advection
 
       if ( (.not. on_a_sphere) .and. (is_periodic) ) then  ! test is for doubly-periodic Cartesian plane only
 
-      dudx_err_max = 0.
-      dudy_err_max = 0.
-      dvdx_err_max = 0.
-      dvdy_err_max = 0.
-      dwdx_err_max = 0.
-      dwdy_err_max = 0.
+         dudx_err_max = 0.
+         dudy_err_max = 0.
+         dvdx_err_max = 0.
+         dvdy_err_max = 0.
+         dwdx_err_max = 0.
+         dwdy_err_max = 0.
 
-      dudx_err_tot = 0.
-      dudy_err_tot = 0.
-      dvdx_err_tot = 0.
-      dvdy_err_tot = 0.
-      dwdx_err_tot = 0.
-      dwdy_err_tot = 0.
+         dudx_err_tot = 0.
+         dudy_err_tot = 0.
+         dvdx_err_tot = 0.
+         dvdy_err_tot = 0.
+         dwdx_err_tot = 0.
+         dwdy_err_tot = 0.
 
-      dudx_max = 0.
-      dudy_max = 0.
-      dvdx_max = 0.
-      dvdy_max = 0.
-      dwdx_max = 0.
-      dwdy_max = 0.
+         dudx_max = 0.
+         dudy_max = 0.
+         dvdx_max = 0.
+         dvdy_max = 0.
+         dwdx_max = 0.
+         dwdy_max = 0.
 
-      do iCell = 1, nCells
+         do iCell = 1, nCells
 
-        dudx = 0.
-        dudy = 0.
-        dvdx = 0.
-        dvdy = 0.
-        dwdx = 0.
-        dwdy = 0.
+            dudx = 0.
+            dudy = 0.
+            dvdx = 0.
+            dvdy = 0.
+            dwdx = 0.
+            dwdy = 0.
 
-        xc = xCell(iCell)
-        yc = yCell(iCell)
+            xc = xCell(iCell)
+            yc = yCell(iCell)
 
-        dudx_c = dudx_cell(xc,yc,x_period,y_period)
-        dudy_c = dudy_cell(xc,yc,x_period,y_period)
-        dvdx_c = dvdx_cell(xc,yc,x_period,y_period)
-        dvdy_c = dvdy_cell(xc,yc,x_period,y_period)
-        dwdx_c = dwdx_cell(xc,yc,x_period,y_period)
-        dwdy_c = dwdy_cell(xc,yc,x_period,y_period)
+            dudx_c = dudx_cell(xc,yc,x_period,y_period)
+            dudy_c = dudy_cell(xc,yc,x_period,y_period)
+            dvdx_c = dvdx_cell(xc,yc,x_period,y_period)
+            dvdy_c = dvdy_cell(xc,yc,x_period,y_period)
+            dwdx_c = dwdx_cell(xc,yc,x_period,y_period)
+            dwdy_c = dwdy_cell(xc,yc,x_period,y_period)
 
-        do iEdge = 1, nEdgesOnCell(iCell)
+            do iEdge = 1, nEdgesOnCell(iCell)
 
-          ie = edgesOnCell(iEdge,iCell)
-          angle_e = angleEdge(ie)
-          xe = xEdge(ie)
-          ye = yEdge(ie)
+               ie = edgesOnCell(iEdge,iCell)
+               angle_e = angleEdge(ie)
+               xe = xEdge(ie)
+               ye = yEdge(ie)
 
-          xe = mpas_fix_periodicity(xe,xc,x_period)
-          ye = mpas_fix_periodicity(ye,yc,y_period)
+               xe = mpas_fix_periodicity(xe,xc,x_period)
+               ye = mpas_fix_periodicity(ye,yc,y_period)
 
-          ue = u_edge(xe,ye,angle_e,x_period,y_period)
-          ve = v_edge(xe,ye,angle_e,x_period,y_period)
-          we = w_edge(xe,ye,x_period,y_period)
+               ue = u_edge(xe,ye,angle_e,x_period,y_period)
+               ve = v_edge(xe,ye,angle_e,x_period,y_period)
+               we = w_edge(xe,ye,x_period,y_period)
 
-          dudx = dudx + deformation_coef_c2(iEdge,iCell)*ue &
-                      - deformation_coef_cs(iEdge,iCell)*ve
-          dudy = dudy + deformation_coef_cs(iEdge,iCell)*ue &
-                      - deformation_coef_s2(iEdge,iCell)*ve
-          dvdx = dvdx + deformation_coef_cs(iEdge,iCell)*ue &
-                      + deformation_coef_c2(iEdge,iCell)*ve
-          dvdy = dvdy + deformation_coef_s2(iEdge,iCell)*ue &
-                      + deformation_coef_cs(iEdge,iCell)*ve
+               dudx = dudx + deformation_coef_c2(iEdge,iCell)*ue &
+                           - deformation_coef_cs(iEdge,iCell)*ve
+               dudy = dudy + deformation_coef_cs(iEdge,iCell)*ue &
+                           - deformation_coef_s2(iEdge,iCell)*ve
+               dvdx = dvdx + deformation_coef_cs(iEdge,iCell)*ue &
+                           + deformation_coef_c2(iEdge,iCell)*ve
+               dvdy = dvdy + deformation_coef_s2(iEdge,iCell)*ue &
+                           + deformation_coef_cs(iEdge,iCell)*ve
 
-          dwdx = dwdx + deformation_coef_c(iEdge,iCell)*we
-          dwdy = dwdy + deformation_coef_s(iEdge,iCell)*we
+               dwdx = dwdx + deformation_coef_c(iEdge,iCell)*we
+               dwdy = dwdy + deformation_coef_s(iEdge,iCell)*we
 
-        end do
+            end do
 
-        ! call mpas_log_write(' u_x, u_y, $r, $r ', realArgs=(/dudx, dudy/))
-        ! call mpas_log_write(' v_x, v_y, $r, $r ', realArgs=(/dvdx, dvdy/))
-        ! call mpas_log_write(' w_x, w_y, $r, $r ', realArgs=(/dwdx, dwdy/))
+            ! call mpas_log_write(' u_x, u_y, $r, $r ', realArgs=(/dudx, dudy/))
+            ! call mpas_log_write(' v_x, v_y, $r, $r ', realArgs=(/dvdx, dvdy/))
+            ! call mpas_log_write(' w_x, w_y, $r, $r ', realArgs=(/dwdx, dwdy/))
 
-        ! check result for cell          
+            ! check result for cell
 
-        e_int = abs(dudx_c - dudx)
-        dudx_err_tot = dudx_err_tot + e_int
-        dudx_err_max = max(dudx_err_max, e_int) 
+            e_int = abs(dudx_c - dudx)
+            dudx_err_tot = dudx_err_tot + e_int
+            dudx_err_max = max(dudx_err_max, e_int)
 
-        e_int = abs(dudy_c - dudy)
-        dudy_err_tot = dudy_err_tot + e_int
-        dudy_err_max = max(dudy_err_max, e_int) 
+            e_int = abs(dudy_c - dudy)
+            dudy_err_tot = dudy_err_tot + e_int
+            dudy_err_max = max(dudy_err_max, e_int)
 
-        e_int = abs(dvdx_c - dvdx)
-        dvdx_err_tot = dvdx_err_tot + e_int
-        dvdx_err_max = max(dvdx_err_max, e_int) 
+            e_int = abs(dvdx_c - dvdx)
+            dvdx_err_tot = dvdx_err_tot + e_int
+            dvdx_err_max = max(dvdx_err_max, e_int)
 
-        e_int = abs(dvdy_c - dvdy)
-        dvdy_err_tot = dvdy_err_tot + e_int
-        dvdy_err_max = max(dvdy_err_max, e_int) 
+            e_int = abs(dvdy_c - dvdy)
+            dvdy_err_tot = dvdy_err_tot + e_int
+            dvdy_err_max = max(dvdy_err_max, e_int)
 
-        e_int = abs(dwdx_c - dwdx)
-        dwdx_err_tot = dwdx_err_tot + e_int
-        dwdx_err_max = max(dwdx_err_max, e_int) 
+            e_int = abs(dwdx_c - dwdx)
+            dwdx_err_tot = dwdx_err_tot + e_int
+            dwdx_err_max = max(dwdx_err_max, e_int)
 
-        e_int = abs(dwdy_c - dwdy)
-        dwdy_err_tot = dwdy_err_tot + e_int
-        dwdy_err_max = max(dwdy_err_max, e_int) 
+            e_int = abs(dwdy_c - dwdy)
+            dwdy_err_tot = dwdy_err_tot + e_int
+            dwdy_err_max = max(dwdy_err_max, e_int)
 
-        dudx_max = max(dudx_max, abs(dudx_c))
-        dudy_max = max(dudy_max, abs(dudy_c))
-        dvdx_max = max(dvdx_max, abs(dvdx_c))
-        dvdy_max = max(dvdy_max, abs(dvdy_c))
-        dwdx_max = max(dwdx_max, abs(dwdx_c))
-        dwdy_max = max(dwdy_max, abs(dwdy_c))
+            dudx_max = max(dudx_max, abs(dudx_c))
+            dudy_max = max(dudy_max, abs(dudy_c))
+            dvdx_max = max(dvdx_max, abs(dvdx_c))
+            dvdy_max = max(dvdy_max, abs(dvdy_c))
+            dwdx_max = max(dwdx_max, abs(dwdx_c))
+            dwdy_max = max(dwdy_max, abs(dwdy_c))
 
-      end do
+         end do
 
-      ! scale errors
+         ! scale errors
 
-      dudx_err_max = dudx_err_max/dudx_max
-      dudy_err_max = dudy_err_max/dudy_max
-      dvdx_err_max = dvdx_err_max/dvdx_max
-      dvdy_err_max = dvdy_err_max/dvdy_max
-      dwdx_err_max = dwdx_err_max/dwdx_max
-      dwdy_err_max = dwdy_err_max/dwdy_max
+         dudx_err_max = dudx_err_max/dudx_max
+         dudy_err_max = dudy_err_max/dudy_max
+         dvdx_err_max = dvdx_err_max/dvdx_max
+         dvdy_err_max = dvdy_err_max/dvdy_max
+         dwdx_err_max = dwdx_err_max/dwdx_max
+         dwdy_err_max = dwdy_err_max/dwdy_max
 
-      dudx_err_tot = dudx_err_tot/dudx_max/real(nCells)
-      dudy_err_tot = dudy_err_tot/dudy_max/real(nCells)
-      dvdx_err_tot = dvdx_err_tot/dvdx_max/real(nCells)
-      dvdy_err_tot = dvdy_err_tot/dvdy_max/real(nCells)
-      dwdx_err_tot = dwdx_err_tot/dwdx_max/real(nCells)
-      dwdy_err_tot = dwdy_err_tot/dwdy_max/real(nCells)
+         dudx_err_tot = dudx_err_tot/dudx_max/real(nCells)
+         dudy_err_tot = dudy_err_tot/dudy_max/real(nCells)
+         dvdx_err_tot = dvdx_err_tot/dvdx_max/real(nCells)
+         dvdy_err_tot = dvdy_err_tot/dvdy_max/real(nCells)
+         dwdx_err_tot = dwdx_err_tot/dwdx_max/real(nCells)
+         dwdy_err_tot = dwdy_err_tot/dwdy_max/real(nCells)
 
-      ! output 
+         ! output
 
-      call mpas_log_write('  ')
-      call mpas_log_write(' deformation coefficients check ')
-      call mpas_log_write(' dudx check, max abs(dudx), max and avg error  $r, $r, $r', &
-                          realArgs=(/dudx_max, dudx_err_max, dudx_err_tot/))
-      call mpas_log_write(' dudy check, max abs(dudy), max and avg error  $r, $r, $r', &
-                          realArgs=(/dudy_max, dudy_err_max, dudy_err_tot/))
-      call mpas_log_write(' dvdx check, max abs(dvdx), max and avg error  $r, $r, $r', &
-                          realArgs=(/dvdx_max, dvdx_err_max, dvdx_err_tot/))
-      call mpas_log_write(' dvdy check, max abs(dvdy), max and avg error  $r, $r, $r', &
-                          realArgs=(/dvdy_max, dvdy_err_max, dvdy_err_tot/))
-      call mpas_log_write(' dwdx check, max abs(dwdx), max and avg error  $r, $r, $r', &
-                          realArgs=(/dwdx_max, dwdx_err_max, dwdx_err_tot/))
-      call mpas_log_write(' dwdy check, max abs(dwdy), max and avg error  $r, $r, $r', &
-                          realArgs=(/dwdy_max, dwdy_err_max, dwdy_err_tot/))
-      call mpas_log_write('  ')
+         call mpas_log_write('  ')
+         call mpas_log_write(' deformation coefficients check ')
+         call mpas_log_write(' dudx check, max abs(dudx), max and avg error  $r, $r, $r', &
+                             realArgs=(/dudx_max, dudx_err_max, dudx_err_tot/))
+         call mpas_log_write(' dudy check, max abs(dudy), max and avg error  $r, $r, $r', &
+                             realArgs=(/dudy_max, dudy_err_max, dudy_err_tot/))
+         call mpas_log_write(' dvdx check, max abs(dvdx), max and avg error  $r, $r, $r', &
+                             realArgs=(/dvdx_max, dvdx_err_max, dvdx_err_tot/))
+         call mpas_log_write(' dvdy check, max abs(dvdy), max and avg error  $r, $r, $r', &
+                             realArgs=(/dvdy_max, dvdy_err_max, dvdy_err_tot/))
+         call mpas_log_write(' dwdx check, max abs(dwdx), max and avg error  $r, $r, $r', &
+                             realArgs=(/dwdx_max, dwdx_err_max, dwdx_err_tot/))
+         call mpas_log_write(' dwdy check, max abs(dwdy), max and avg error  $r, $r, $r', &
+                             realArgs=(/dwdy_max, dwdy_err_max, dwdy_err_tot/))
+         call mpas_log_write('  ')
 
       end if
 
-      end subroutine atm_init_test_coefs
+   end subroutine atm_init_test_coefs
 
 end module atm_advection
