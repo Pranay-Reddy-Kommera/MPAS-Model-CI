@@ -685,6 +685,24 @@ CPPINCLUDES =
 FCINCLUDES =
 LIBS =
 
+export MPAS_ESMF ?= embedded
+ifeq "$(MPAS_ESMF)" "external"
+  ifeq ($(wildcard $(ESMFMKFILE)), )
+    $(error ESMFMKFILE must be set if MPAS_ESMF=external)
+  endif
+  include $(ESMFMKFILE)
+  export MPAS_ESMF_INC = $(ESMF_F90COMPILEPATHS)
+  export MPAS_ESMF_LIB = $(ESMF_F90LINKPATHS) $(ESMF_F90ESMFLINKPATHS) $(ESMF_F90ESMFLINKLIBS)
+  override CPPFLAGS += -DMPAS_EXTERNAL_ESMF_LIB=true
+  ESMF_MESSAGE="MPAS was built with an external ESMF library using ESMFMKFILE"
+else ifeq "$(MPAS_ESMF)" "embedded"
+  export MPAS_ESMF_INC = -I$(PWD)/src/external/esmf_time_f90
+  export MPAS_ESMF_LIB = -L$(PWD)/src/external/esmf_time_f90 -lesmf_time
+  ESMF_MESSAGE="MPAS was built with the embedded ESMF timekeeping library."
+else
+  $(error Invalid MPAS_ESMF option: $(MPAS_ESMF) - valid options "embedded", "external")
+endif
+
 ifneq "$(PIO)" ""
 #
 # Regardless of PIO library version, look for a lib subdirectory of PIO path
@@ -1563,6 +1581,7 @@ endif
 	@echo $(GEN_F90_MESSAGE)
 	@echo $(TIMER_MESSAGE)
 	@echo $(IO_MESSAGE)
+	@echo $(ESMF_MESSAGE)
 	@echo "*******************************************************************************"
 clean:
 	cd src; $(MAKE) clean RM="$(RM)" CORE="$(CORE)" AUTOCLEAN="$(AUTOCLEAN)"
@@ -1619,6 +1638,9 @@ errmsg:
 	@echo "    OPENACC=true  - builds and links with OpenACC flags. Default is to not use OpenACC."
 	@echo "    PRECISION=double - builds with default double-precision real kind. Default is to use single-precision."
 	@echo "    SHAREDLIB=true - generate position-independent code suitable for use in a shared library. Default is false."
+	@echo "    MPAS_ESMF=opt  - Selects the ESMF library to be used for MPAS. Options are:"
+	@echo "                     MPAS_ESMF=embedded - Use the embedded ESMF timekeeping library (default)"
+	@echo "                     MPAS_ESMF=external - Use an external ESMF library, determined by ESMFMKFILE"
 	@echo ""
 	@echo "Ensure that NETCDF, PNETCDF, PIO, and PAPI (if USE_PAPI=true) are environment variables"
 	@echo "that point to the absolute paths for the libraries."
