@@ -5407,25 +5407,25 @@ module atm_time_integration
 
          else if (config_les_model /= "none") then
 
-                 ! call mpas_log_write(' BV call, index qv, qc, tke $i $i $i ', intArgs=(/index_qv, index_qc, index_tke/))
+            ! call mpas_log_write(' BV call, index qv, qc, tke $i $i $i ', intArgs=(/index_qv, index_qc, index_tke/))
 
-                 call calculate_n2( bn2, theta_m, exner, pressure_b, pp, zgrid, scalars, index_qv, index_qc, qtot, &
-                                    cellStart, cellEnd, nCells)
+            call calculate_n2( bn2, theta_m, exner, pressure_b, pp, zgrid, scalars, index_qv, index_qc, qtot, &
+                               cellStart, cellEnd, nCells)
 
-                 currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
-                 call mpas_get_time(curr_time=currTime, H=H, M=M, S=S, S_n=S_n, S_d=S_d)
-                 time_of_day_seconds = real(H)*3600. + real(M)*60. + real(S) + real(S_n)/real(S_d) + 0.5*dt
-                 ! call mpas_log_write(' les integration, timestep midpoint time of day in seconds, $r ', realArgs=(/time_of_day_seconds/))
+            currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
+            call mpas_get_time(curr_time=currTime, H=H, M=M, S=S, S_n=S_n, S_d=S_d)
+            time_of_day_seconds = real(H)*3600. + real(M)*60. + real(S) + real(S_n)/real(S_d) + 0.5*dt
+            ! call mpas_log_write(' les integration, timestep midpoint time of day in seconds, $r ', realArgs=(/time_of_day_seconds/))
       
-                 call les_models( config_les_model, config_les_surface, dynamics_substep, eddy_visc_horz, eddy_visc_vert,                  &
-                                  u, v, ur_cell, vr_cell,                                            &
-                                  w, c_s, bn2, zgrid, config_len_disp,                               &
-                                  deformation_coef_c2, deformation_coef_s2, deformation_coef_cs,     &
-                                  deformation_coef_c, deformation_coef_s, prandtl_3d_inv,            &
-                                  invDt, h_mom_eddy_visc4, config_visc4_2dsmag, h_theta_eddy_visc4,  &
-                                  scalars, tend_scalars, index_tke, rho_zz, meshScalingDel2,         &
-                                  cellStart, cellEnd, nEdgesOnCell, edgesOnCell, cellsOnEdge,        &
-                                  nCells, nEdges, nVertLevels, maxEdges, num_scalars                )
+            call les_models( config_les_model, config_les_surface, dynamics_substep, eddy_visc_horz, eddy_visc_vert,                  &
+                             u, v, ur_cell, vr_cell,                                            &
+                             w, c_s, bn2, zgrid, config_len_disp,                               &
+                             deformation_coef_c2, deformation_coef_s2, deformation_coef_cs,     &
+                             deformation_coef_c, deformation_coef_s, prandtl_3d_inv,            &
+                             invDt, h_mom_eddy_visc4, config_visc4_2dsmag, h_theta_eddy_visc4,  &
+                             scalars, tend_scalars, index_tke, rho_zz, meshScalingDel2,         &
+                             cellStart, cellEnd, nEdgesOnCell, edgesOnCell, cellsOnEdge,        &
+                             nCells, nEdges, nVertLevels, maxEdges, num_scalars                )
 
          end if
 
