@@ -5238,7 +5238,6 @@ module atm_time_integration
       real (kind=RKIND) :: config_visc4_2dsmag
       real (kind=RKIND) :: config_len_disp
       real (kind=RKIND) :: config_h_mom_eddy_visc2, config_v_mom_eddy_visc2, config_h_theta_eddy_visc2, config_v_theta_eddy_visc2
-      logical, parameter :: test_dissipation_3d=.true.
 
       integer, intent(in) :: rk_step, dynamics_substep
       real (kind=RKIND), intent(in) :: dt
@@ -5628,36 +5627,20 @@ module atm_time_integration
 
 !$OMP BARRIER
 
-!          if(test_dissipation_3d) then
+         call  u_dissipation_3d( edgeStart, edgeEnd, edgeSolveStart, edgeSolveEnd, vertexStart, vertexEnd,    &
+                                 cellStart, cellEnd, nCells, nEdges, nVertices, vertexDegree,                 &
+                                 cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnVertex,                     &
+                                 nEdgesOnCell, edgesOnCell_sign, edgesOnVertex_sign,                          &
+                                 invAreaCell, invAreaTriangle, invDvEdge, invDcEdge,                          &
+                                 angleEdge, dcEdge, dvEdge, meshScalingDel2, meshScalingDel4,                 &
+                                 config_mix_full, h_mom_eddy_visc4, v_mom_eddy_visc2,                         &
+                                 config_del4u_div_factor, zgrid,                                              &
+                                 eddy_visc_horz, eddy_visc_vert, zz, rdzu, rdzw,                              &
+                                 fzm, fzp, config_les_model, config_les_surface,                              &
+                                 config_surface_drag_coefficient,                                             &
+                                 delsq_u, delsq_vorticity, delsq_divergence,                                  &
+                                 u, v, divergence, vorticity, rho_edge, rho_zz, u_init, v_init, ustm, tend_u_euler )
 
-            call  u_dissipation_3d( edgeStart, edgeEnd, edgeSolveStart, edgeSolveEnd, vertexStart, vertexEnd,    &
-                                    cellStart, cellEnd, nCells, nEdges, nVertices, vertexDegree,                 &
-                                    cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnVertex,                     &
-                                    nEdgesOnCell, edgesOnCell_sign, edgesOnVertex_sign,                          &
-                                    invAreaCell, invAreaTriangle, invDvEdge, invDcEdge,                          &
-                                    angleEdge, dcEdge, dvEdge, meshScalingDel2, meshScalingDel4,                 &
-                                    config_mix_full, h_mom_eddy_visc4, v_mom_eddy_visc2,                         &
-                                    config_del4u_div_factor, zgrid,                                              &
-                                    eddy_visc_horz, eddy_visc_vert, zz, rdzu, rdzw,                              &
-                                    fzm, fzp, config_les_model, config_les_surface,                              &
-                                    config_surface_drag_coefficient,                                             &
-                                    delsq_u, delsq_vorticity, delsq_divergence,                                  &
-                                    u, v, divergence, vorticity, rho_edge, rho_zz, u_init, v_init, ustm, tend_u_euler )
-
-!          else  ! this is the original MPAS dissipation code
-!
-!            call  u_dissipation( edgeStart, edgeEnd, edgeSolveStart, edgeSolveEnd, vertexStart, vertexEnd,    &
-!                                 cellStart, cellEnd, nCells, nEdges, nVertices, vertexDegree,                 &
-!                                 cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnVertex,                     &
-!                                 nEdgesOnCell, edgesOnCell_sign, edgesOnVertex_sign,                          &
-!                                 invAreaCell, invAreaTriangle, invDvEdge, invDcEdge,                          &
-!                                 angleEdge, dcEdge, dvEdge, meshScalingDel2, meshScalingDel4,                 &
-!                                 config_mix_full, h_mom_eddy_visc4, v_mom_eddy_visc2,                         &
-!                                 config_del4u_div_factor, zgrid, kdiff,                                       &
-!                                 delsq_u, delsq_vorticity, delsq_divergence,                                  &
-!                                 u, divergence, vorticity, rho_edge, u_init, v_init, tend_u_euler            )
-!
-!          end if
 
       end if ! (rk_step 1 test for computing mixing terms)
 
@@ -5785,35 +5768,18 @@ module atm_time_integration
 
       if (rk_step == 1) then
 
-!          if(test_dissipation_3d) then
-
-            call  w_dissipation_3d( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
-                                    nCells, nEdges,                                           &
-                                    nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
-                                    invAreaCell, invDcEdge, dvEdge,                           &
-                                    meshScalingDel2, meshScalingDel4,                         &
-                                    rdzw, rdzu,                                               &
-                                    v_mom_eddy_visc2, h_mom_eddy_visc4,                       &
-                                    delsq_w,                                                  &
-                                    w, rho_edge, rho_zz, divergence, zz,                      &
-                                    eddy_visc_horz, eddy_visc_vert,                           &
-                                    config_les_model, config_les_surface,                     &
-                                    tend_w_euler                                             )
-
-!          else
-!
-!            call  w_dissipation( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
-!                                 nCells, nEdges,                                           &
-!                                 nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
-!                                 invAreaCell, invDcEdge, dvEdge,                           &
-!                                 meshScalingDel2, meshScalingDel4,                         &
-!                                 rdzw, rdzu,                                               &
-!                                 v_mom_eddy_visc2, h_mom_eddy_visc4,                       &
-!                                 delsq_w,                                                  &
-!                                 w, rho_edge, kdiff, rho_zz,                               &
-!                                 tend_w_euler                                             )
-!
-!          end if
+         call  w_dissipation_3d( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
+                                 nCells, nEdges,                                           &
+                                 nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
+                                 invAreaCell, invDcEdge, dvEdge,                           &
+                                 meshScalingDel2, meshScalingDel4,                         &
+                                 rdzw, rdzu,                                               &
+                                 v_mom_eddy_visc2, h_mom_eddy_visc4,                       &
+                                 delsq_w,                                                  &
+                                 w, rho_edge, rho_zz, divergence, zz,                      &
+                                 eddy_visc_horz, eddy_visc_vert,                           &
+                                 config_les_model, config_les_surface,                     &
+                                 tend_w_euler                                             )
 
       end if ! mixing for w computed in first rk_step
 
@@ -5958,58 +5924,25 @@ module atm_time_integration
 
       if (rk_step == 1) then
 
-!          if(test_dissipation_3d) then
-
-            !call theta_dissipation_3d( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
-            !                           nCells, nEdges,                                           &
-            !                           nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
-            !                           invAreaCell, invDcEdge, dvEdge,                           &
-            !                           meshScalingDel2, meshScalingDel4,                         &
-            !                           config_mix_full, t_init, zgrid,                           &
-            !                           rdzw, rdzu, fzm, fzp,                                     &
-            !                           v_theta_eddy_visc2, h_theta_eddy_visc4, prandtl_inv,      &
-            !                           delsq_theta,                                              &
-            !                           theta_m, rho_edge, rho_zz, zz,                            &
-            !                           eddy_visc_horz, eddy_visc_vert,                           &
-            !                           config_les_model,                                         &
-            !                           tend_theta_euler                                         )
-
-            call scalar_dissipation_3d_les( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
-                                            nCells, nEdges,                                           &
-                                            nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
-                                            invAreaCell, invDcEdge, dvEdge,                           &
-                                            meshScalingDel2, meshScalingDel4,                         &
-                                            config_mix_full, t_init, zgrid,                           &
-                                            rdzw, rdzu, fzm, fzp,                                     &
-                                            v_theta_eddy_visc2, h_theta_eddy_visc4, prandtl_inv,      &
-                                            prandtl_3d_inv,                                           &
-                                            delsq_theta,                                              &
-                                            theta_m, rho_edge, rho_zz, zz,                            &
-                                            eddy_visc_horz, eddy_visc_vert,                           &
-                                            bn2, config_len_disp, scalars, tend_scalars,              &
-                                            index_tke, index_qv, num_scalars, config_mix_scalars,     &
-                                            config_les_model, config_les_surface, time_of_day_seconds,&
-                                            config_surface_heat_flux, config_surface_moisture_flux,   &
-                                            ur_cell, vr_cell,                                         &
-                                            hfx, qfx,                                                 &
-                                            tend_theta_euler, dynamics_substep                       )
-
-
-!          else  ! this is the original MPAS dissipation code
-!
-!            call theta_dissipation( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
-!                                    nCells, nEdges,                                           &
-!                                    nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
-!                                    invAreaCell, invDcEdge, dvEdge,                           &
-!                                    meshScalingDel2, meshScalingDel4,                         &
-!                                    config_mix_full, t_init, zgrid,                           &
-!                                    rdzw, rdzu,                                               &
-!                                    v_theta_eddy_visc2, h_theta_eddy_visc4, prandtl_inv,      &
-!                                    delsq_theta,                                              &
-!                                    theta_m, rho_edge, kdiff, rho_zz,                         &
-!                                    tend_theta_euler                                         )
-!
-!          end if
+         call scalar_dissipation_3d_les( cellStart, cellEnd, cellSolveStart, cellSolveEnd,         &
+                                         nCells, nEdges,                                           &
+                                         nEdgesOnCell, edgesOnCell, cellsOnEdge, edgesOnCell_sign, &
+                                         invAreaCell, invDcEdge, dvEdge,                           &
+                                         meshScalingDel2, meshScalingDel4,                         &
+                                         config_mix_full, t_init, zgrid,                           &
+                                         rdzw, rdzu, fzm, fzp,                                     &
+                                         v_theta_eddy_visc2, h_theta_eddy_visc4, prandtl_inv,      &
+                                         prandtl_3d_inv,                                           &
+                                         delsq_theta,                                              &
+                                         theta_m, rho_edge, rho_zz, zz,                            &
+                                         eddy_visc_horz, eddy_visc_vert,                           &
+                                         bn2, config_len_disp, scalars, tend_scalars,              &
+                                         index_tke, index_qv, num_scalars, config_mix_scalars,     &
+                                         config_les_model, config_les_surface, time_of_day_seconds,&
+                                         config_surface_heat_flux, config_surface_moisture_flux,   &
+                                         ur_cell, vr_cell,                                         &
+                                         hfx, qfx,                                                 &
+                                         tend_theta_euler, dynamics_substep                       )
 
       end if ! theta mixing calculated first rk_step
 
