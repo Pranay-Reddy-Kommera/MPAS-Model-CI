@@ -824,7 +824,8 @@
 
  call mpas_pool_get_array(mesh,'zz'   ,zz   )
  call mpas_pool_get_array(mesh,'zgrid',zgrid)
- call mpas_pool_get_array(mesh,'mp_top_level',mp_top_level)
+
+ call mpas_pool_get_array(tend_physics,'mp_top_level',mp_top_level)
 
  call mpas_pool_get_array(diag,'exner'           ,exner           )
  call mpas_pool_get_array(diag,'exner_base'      ,exner_b         )

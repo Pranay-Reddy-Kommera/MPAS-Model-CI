@@ -80,7 +80,7 @@
 
 
 !=================================================================================================================
- subroutine physics_init(dminfo,stream_manager,clock,configs,mesh,diag,tend,state,time_lev,diag_physics,     &
+ subroutine physics_init(dminfo,stream_manager,clock,configs,mesh,diag,tend,tend_physics,state,time_lev,diag_physics, &
                          diag_physics_noahmp,ngw_input,atm_input,sfc_input,output_noahmp)
 !=================================================================================================================
 
@@ -99,6 +99,7 @@ use mpas_stream_manager
  type(mpas_pool_type),intent(inout):: state
  type(mpas_pool_type),intent(inout):: diag
  type(mpas_pool_type),intent(inout):: tend
+ type(mpas_pool_type),intent(inout):: tend_physics
  type(mpas_pool_type),intent(inout):: diag_physics
  type(mpas_pool_type),intent(inout):: diag_physics_noahmp
  type(mpas_pool_type),intent(inout):: ngw_input
@@ -242,7 +243,7 @@ use mpas_stream_manager
  call mpas_pool_get_dimension(mesh,'nVertLevels',nVertLevels  )
  call mpas_pool_get_array(mesh,'rdzw'   ,rdzw   )
  call mpas_pool_get_array(mesh,'dzu'    ,dzu    )
- call mpas_pool_get_array(mesh,'mp_top_level',mp_top_level)
+ call mpas_pool_get_array(tend_physics,'mp_top_level',mp_top_level)
 
  currTime = mpas_get_clock_time(clock,MPAS_NOW,ierr)
  call mpas_get_time(curr_time=currTime,DoY=julday,ierr=ierr)

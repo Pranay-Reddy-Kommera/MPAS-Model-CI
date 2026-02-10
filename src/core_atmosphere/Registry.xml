@@ -1599,9 +1599,6 @@
                 <var name="nearestRelaxationCell" type="integer" dimensions="nCells" units="-"
                      description="For cells in the specified zone, gives the index of the nearest cell in the relaxation zone"/>
 
-                <var name="mp_top_level" type="integer" dimensions="" units="-"
-                     description="Vertical layer above which microphysics tendency is ignored"/>
-
         </var_struct>
 
         <var_struct name="state" time_levs="2">
@@ -3426,6 +3423,9 @@
 #endif
 
         <var_struct name="tend_physics" time_levs="1">
+
+                <var name="mp_top_level" type="integer" dimensions="" units="-"
+                     description="Vertical layer above which microphysics tendency is ignored"/>
 
                 <var name="tend_ru_physics" type="real" dimensions="nVertLevels nEdges Time" units="kg m^{-2} s^{-1}"
                      description="Total horizontal momentum tendency from physics"
