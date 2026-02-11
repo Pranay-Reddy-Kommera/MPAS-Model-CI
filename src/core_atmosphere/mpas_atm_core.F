@@ -387,6 +387,7 @@ module atm_core
       type (mpas_pool_type), pointer :: state
       type (mpas_pool_type), pointer :: diag
       type (mpas_pool_type), pointer :: tend
+      type (mpas_pool_type), pointer :: tend_physics
       type (mpas_pool_type), pointer :: sfc_input
       type (mpas_pool_type), pointer :: diag_physics
       type (mpas_pool_type), pointer :: diag_physics_noahmp
@@ -563,6 +564,7 @@ module atm_core
       if (moist_physics) then
          !initialization of some input variables in registry:
          call mpas_pool_get_subpool(block % structs, 'tend', tend)
+         call mpas_pool_get_subpool(block % structs, 'tend_physics', tend_physics)
          call mpas_pool_get_subpool(block % structs, 'diag_physics', diag_physics)
          call mpas_pool_get_subpool(block % structs, 'diag_physics_noahmp', diag_physics_noahmp)
          call mpas_pool_get_subpool(block % structs, 'ngw_input', ngw_input)
@@ -573,7 +575,7 @@ module atm_core
          call physics_run_init(block % configs, mesh, state, clock, stream_manager)
 
          !initialization of all physics:
-         call physics_init(dminfo, stream_manager, clock, block % configs, mesh, diag, tend, state, 1,       &
+         call physics_init(dminfo, stream_manager, clock, block % configs, mesh, diag, tend, tend_physics, state, 1, &
                            diag_physics, diag_physics_noahmp, ngw_input, atm_input, sfc_input, output_noahmp)
       endif
 #endif

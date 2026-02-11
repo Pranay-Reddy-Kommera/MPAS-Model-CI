@@ -2215,6 +2215,11 @@
                      description="number of microphysics time-steps per physics time-steps"
                      possible_values="Positive integers"/>
 
+                <nml_option name="config_microphysics_top" type="real" default_value="45000." in_defaults="false"
+                     units="m"
+                     description="height above which to exclude microphysics tendencies"
+                     possible_values="Positive reals"/>
+
                 <nml_option name="config_radtlw_interval" type="character" default_value="00:30:00"
                      units="-"
                      description="time interval between calls to parameterization of long-wave radiation"
@@ -3418,6 +3423,9 @@
 #endif
 
         <var_struct name="tend_physics" time_levs="1">
+
+                <var name="mp_top_level" type="integer" dimensions="" units="-"
+                     description="Vertical layer above which microphysics tendency is ignored"/>
 
                 <var name="tend_ru_physics" type="real" dimensions="nVertLevels nEdges Time" units="kg m^{-2} s^{-1}"
                      description="Total horizontal momentum tendency from physics"
