@@ -7,8 +7,9 @@
 !
 module mpas_io
 
-#define IO_DEBUG_WRITE(M, ARGS) !call mpas_log_write(M, ARGS)
-#define IO_ERROR_WRITE(M, ARGS) call mpas_log_write( M, ARGS, messageType=MPAS_LOG_ERR)
+#define COMMA ,
+#define IO_DEBUG_WRITE(M) ! call mpas_log_write(M)
+#define IO_ERROR_WRITE(M) call mpas_log_write( M, messageType=MPAS_LOG_ERR)
 
    use mpas_derived_types
    use mpas_attlist
@@ -2000,15 +2001,15 @@ module mpas_io
          do i = 1, ndims
             message = '  MPAS_io_get_var_generic len(charVal):$i var "'//trim(fieldname)// &
                       '" type is $i dim is $i '// trim(dimnames(i))//' size is $i'
-            IO_DEBUG_WRITE(message, intArgs=(/len(charVal), fieldtype, i, dimsizes(i)/))
+            IO_DEBUG_WRITE(message COMMA intArgs=(/len(charVal), fieldtype, i, dimsizes(i)/))
          end do
          ! because charVal is provided, assume dimension 1 is the string length
          if (dimsizes(1) > len(charVal)) then
             local_ierr = MPAS_IO_ERR_INSUFFICIENT_BUF
             message = 'Length of string variable "'//trim(fieldname)//'" in file "'//trim(handle % filename)//'"'
-            IO_ERROR_WRITE(message, intArgs=[0])
+            IO_ERROR_WRITE(message)
             message = '    exceeds buffer size: len('//trim(fieldname)//')=$i, len(buffer)=$i'
-            IO_ERROR_WRITE(message, intArgs=(/dimsizes(1), len(charVal)/))
+            IO_ERROR_WRITE(message COMMA intArgs=(/dimsizes(1), len(charVal)/))
          else
 #ifdef MPAS_SMIOL_SUPPORT
             local_ierr = SMIOLf_get_var(handle % smiol_file, trim(fieldname), null_decomp, charVal_p)
