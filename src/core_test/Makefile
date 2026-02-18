@@ -12,7 +12,8 @@ OBJS = mpas_test_core.o \
        mpas_test_core_dmpar.o \
        mpas_test_core_stream_inquiry.o \
        mpas_test_openacc.o \
-       mpas_test_core_stream_list.o
+       mpas_test_core_stream_list.o \
+       mpas_test_core_io.o
 
 all: core_test
 
@@ -44,7 +45,7 @@ mpas_test_core.o: mpas_test_core_halo_exch.o mpas_test_core_streams.o \
                   mpas_test_core_sorting.o mpas_halo_testing.o \
                   mpas_test_core_string_utils.o mpas_test_core_dmpar.o \
                   mpas_test_core_stream_inquiry.o mpas_test_openacc.o \
-                  mpas_test_core_stream_list.o
+                  mpas_test_core_stream_list.o mpas_test_core_io.o
 
 mpas_test_core_halo_exch.o:
 
