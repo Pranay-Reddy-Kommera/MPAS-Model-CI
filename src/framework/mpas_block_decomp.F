@@ -54,6 +54,8 @@ module mpas_block_decomp
    subroutine mpas_block_decomp_cells_for_proc(dminfo, partial_global_graph_info, local_cell_list, block_id, block_start, &
                                                block_count, numBlocks, explicitProcDecomp, blockFilePrefix, procFilePrefix)!{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+
       implicit none
 
       type (dm_info), intent(inout) :: dminfo !< Input: domain information
@@ -83,6 +85,8 @@ module mpas_block_decomp
       logical :: useScotch
 
       no_blocks = .false.
+
+      call mpas_timer_start('mpas_block_decomp_cells_for_proc')
 
       if (numBlocks == 0) then
         dminfo % total_blocks = dminfo % nProcs
@@ -321,6 +325,8 @@ module mpas_block_decomp
         end if
       end if
 
+      call mpas_timer_stop('mpas_block_decomp_cells_for_proc')
+
    end subroutine mpas_block_decomp_cells_for_proc!}}}
 
 !***********************************************************************
@@ -341,6 +347,7 @@ module mpas_block_decomp
 #ifdef MPAS_SCOTCH
    subroutine mpas_block_decomp_scotch(dminfo, partial_global_graph_info, blockFilePrefix, blockFilename)!{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
 #ifdef MPAS_USE_MPI_F08
       use mpi_f08, only : MPI_Comm, MPI_INTEGER, MPI_Comm_dup, MPI_Comm_free, MPI_Gather, MPI_Gatherv
 #else
@@ -385,6 +392,8 @@ module mpas_block_decomp
       allocate(global_start(dminfo % nprocs))
       allocate(global_block_id_arr(partial_global_graph_info % nVerticesTotal))
       allocate(local_block_id_arr(partial_global_graph_info % nVertices))
+
+      call mpas_timer_start('scotch_total')
 
       ! Count the number of edges (including to ghost cells) in the portion of graph
       ! owned by the current rank. Each edge is counted twice, once for each vertex,
@@ -451,9 +460,12 @@ module mpas_block_decomp
       ! Initialize the strategy data structure
       call scotch_stratinit (stradat)
 
+      call mpas_timer_start('scotch_graph_partitioning')
       ! Partition the distributed graph and save the result in local_block_id_arr
       npart = dminfo % nProcs
       call scotch_dgraphpart (scotchdgraph, npart, stradat, local_block_id_arr)
+
+      call mpas_timer_stop('scotch_graph_partitioning')
 
       ! After the paritioning above, each processor would not necessarily have information about all of the
       ! vertices it owns. To obtain this information, Scotch provides a convenience function to redistribute the graph
@@ -532,6 +544,8 @@ module mpas_block_decomp
       deallocate(local_block_id_arr)
 
       call MPI_Comm_free(localcomm, mpi_ierr)
+
+      call mpas_timer_stop('scotch_total')
 
    end subroutine mpas_block_decomp_scotch
 #endif
