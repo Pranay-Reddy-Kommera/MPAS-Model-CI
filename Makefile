@@ -759,6 +759,15 @@ endif
 	LIBS += $(NCLIB)
 endif
 
+ifneq "$(SCOTCH)" ""
+	SCOTCH_INCLUDES += -I$(SCOTCH)/include
+	SCOTCH_LIBS += -L$(SCOTCH)/lib64 -lptscotch -lscotch  -lptscotcherr -lm
+	SCOTCH_FLAGS = -DMPAS_SCOTCH
+
+	CPPINCLUDES += $(SCOTCH_INCLUDES)
+	LIBS += $(SCOTCH_LIBS)
+	override CPPFLAGS += $(SCOTCH_FLAGS)
+endif
 
 ifneq "$(PNETCDF)" ""
 ifneq ($(wildcard $(PNETCDF)/lib/libpnetcdf.*), )
@@ -1415,6 +1424,37 @@ musica_fortran_test:
 	$(eval MUSICA_FORTRAN_VERSION := $(shell pkg-config --modversion musica-fortran))
 	$(if $(findstring 1,$(MUSICA_FORTRAN_TEST)), $(info Built a simple test program with MUSICA-Fortran version $(MUSICA_FORTRAN_VERSION)), )
 
+scotch_c_test:
+	@#
+	@# Create a C test program and try to build against the PT-SCOTCH library
+	@#
+	$(info Checking for a working Scotch library...)
+	$(eval SCOTCH_C_TEST := $(shell $\
+	    printf "#include <stdio.h>\n\
+			&#include \"mpi.h\"\n\
+			&#include \"ptscotch.h\"\n\
+			&int main(){\n\
+			&    int err;\n\
+			&    SCOTCH_Dgraph *dgraph;\n\
+			&    err = SCOTCH_dgraphInit(dgraph, MPI_COMM_WORLD);\n\
+			&    SCOTCH_dgraphExit(dgraph);\n\
+			&    return err;\n\
+			&}\n" | sed 's/&/ /' > ptscotch_c_test.c; $\
+		$\
+		$(CC) $(CPPINCLUDES) $(CFLAGS) $(LDFLAGS) ptscotch_c_test.c -o ptscotch_c_test.x $(SCOTCH_LIBS) > ptscotch_c_test.log 2>&1; $\
+		scotch_c_status=$$?; $\
+		if [ $$scotch_c_status -eq 0 ]; then $\
+			printf "1"; $\
+			rm -f ptscotch_c_test.c ptscotch_c_test.x ptscotch_c_test.log; $\
+		else $\
+			printf "0"; $\
+		fi $\
+	))
+	$(if $(findstring 0,$(SCOTCH_C_TEST)), $(error Could not build a simple C program with Scotch. $\
+		Test program ptscotch_c_test.c and output ptscotch_c_test.log have been left $\
+	    in the top-level MPAS directory for further debugging ))
+	$(if $(findstring 1,$(SCOTCH_C_TEST)), $(info Built a simple C program with Scotch ))
+
 pnetcdf_test:
 	@#
 	@# Create test C programs that look for PNetCDF header file and some symbols in it
@@ -1471,6 +1511,13 @@ else
 MUSICA_MESSAGE = "MPAS was not linked with the MUSICA-Fortran library."
 endif
 
+ifneq "$(SCOTCH)" ""
+MAIN_DEPS += scotch_c_test
+SCOTCH_MESSAGE = "MPAS has been linked with the Scotch graph partitioning library."
+else
+SCOTCH_MESSAGE = "MPAS was NOT linked with the Scotch graph partitioning library."
+endif
+
 mpas_main: $(MAIN_DEPS)
 	cd src; $(MAKE) FC="$(FC)" \
                  CC="$(CC)" \
@@ -1508,6 +1555,7 @@ mpas_main: $(MAIN_DEPS)
 	@echo $(OPENMP_OFFLOAD_MESSAGE)
 	@echo $(OPENACC_MESSAGE)
 	@echo $(MUSICA_MESSAGE)
+	@echo $(SCOTCH_MESSAGE)
 	@echo $(SHAREDLIB_MESSAGE)
 ifeq "$(AUTOCLEAN)" "true"
 	@echo $(AUTOCLEAN_MESSAGE)
