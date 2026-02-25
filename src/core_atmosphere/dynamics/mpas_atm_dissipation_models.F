@@ -28,8 +28,93 @@ module mpas_atm_dissipation_models
    ! real (kind=RKIND), parameter :: c_k = 0.1
    real (kind=RKIND), parameter :: c_k = 0.25
 
+   integer, parameter :: LES_INVALID_OPT = -1
+
+   integer, parameter :: LES_MODEL_NONE = 0, &
+                         LES_MODEL_3D_SMAGORINSKY = 1, &
+                         LES_MODEL_PROGNOSTIC_15_ORDER = 2
+
+   integer, parameter :: LES_SURFACE_NONE = 0, &
+                         LES_SURFACE_SPECIFIED = 1, &
+                         LES_SURFACE_VARYING = 2
 
 contains
+
+
+   !-----------------------------------------------------------------------
+   !  routine les_model_from_string
+   !
+   !> \brief Converts an LES model option from a string to an integer parameter
+   !> \author Michael Duda
+   !> \date   13 February 2026
+   !> \details
+   !>  Given a string that contains the name of a valid LES model option, this
+   !>  routine returns an integer parameter corresponding to that option.
+   !>
+   !>  If the given string is not recognized as a valid LES model option, the
+   !>  integer parameter LES_INVALID_OPT is returned.
+   !
+   !-----------------------------------------------------------------------
+   pure function les_model_from_string(les_model_str) result(les_model_opt)
+
+      implicit none
+
+      ! Arguments
+      character(len=*), intent(in) :: les_model_str
+
+      ! Return value
+      integer :: les_model_opt
+
+
+      if (trim(les_model_str) == 'none') then
+         les_model_opt = LES_MODEL_NONE
+      else if (trim(les_model_str) == '3d_smagorinsky') then
+         les_model_opt = LES_MODEL_3D_SMAGORINSKY
+      else if (trim(les_model_str) == 'prognostic_1.5_order') then
+         les_model_opt = LES_MODEL_PROGNOSTIC_15_ORDER
+      else
+         les_model_opt = LES_INVALID_OPT
+      end if
+
+   end function les_model_from_string
+
+
+   !-----------------------------------------------------------------------
+   !  routine les_surface_from_string
+   !
+   !> \brief Converts an LES surface option from a string to an integer parameter
+   !> \author Michael Duda
+   !> \date   13 February 2026
+   !> \details
+   !>  Given a string that contains the name of a valid LES surface option, this
+   !>  routine returns an integer parameter corresponding to that option.
+   !>
+   !>  If the given string is not recognized as a valid LES surface option, the
+   !>  integer parameter LES_INVALID_OPT is returned.
+   !
+   !-----------------------------------------------------------------------
+   pure function les_surface_from_string(les_surface_str) result(les_surface_opt)
+
+      implicit none
+
+      ! Arguments
+      character(len=*), intent(in) :: les_surface_str
+
+      ! Return value
+      integer :: les_surface_opt
+
+
+      if (trim(les_surface_str) == 'none') then
+         les_surface_opt = LES_SURFACE_NONE
+      else if (trim(les_surface_str) == 'specified') then
+         les_surface_opt = LES_SURFACE_SPECIFIED
+      else if (trim(les_surface_str) == 'varying') then
+         les_surface_opt = LES_SURFACE_VARYING
+      else
+         les_surface_opt = LES_INVALID_OPT
+      end if
+
+   end function les_surface_from_string
 
 
    subroutine smagorinsky_2d( kdiff, u, v, c_s, config_len_disp,                                 &
@@ -121,7 +206,7 @@ contains
 
 !---------------------------------------
 
-   subroutine les_models( config_les_model, config_les_surface, dynamics_substep, eddy_visc_horz, eddy_visc_vert,                  &
+   subroutine les_models( les_model_opt, les_surface_opt, dynamics_substep, eddy_visc_horz, eddy_visc_vert, &
                           u, v, uCell, vCell,                                                &
                           w, c_s, bv_freq2, zgrid, config_len_disp,                          &
                           deformation_coef_c2, deformation_coef_s2, deformation_coef_cs,     &
@@ -133,8 +218,8 @@ contains
 
       implicit none
 
-      character (len=StrKIND), intent(in) :: config_les_model
-      character (len=StrKIND), intent(in) :: config_les_surface
+      integer, intent(in) :: les_model_opt
+      integer, intent(in) :: les_surface_opt
 
       integer, intent(in) :: cellStart, cellEnd, nCells, nEdges, nVertLevels, maxEdges, index_tke, num_scalars
       integer, intent(in) :: dynamics_substep
@@ -179,10 +264,6 @@ contains
       logical, parameter :: test_tke=.true.
       ! real (kind=RKIND), parameter :: epsilon_bv = 1.e-06
 
-
-      DEBUG_WRITE(' begin les_models ')
-      DEBUG_WRITE(' les scheme is '//trim(config_les_model))
-      DEBUG_WRITE(' les surface scheme is '//trim(config_les_surface))
 
       !$acc enter data create(dudx, dudy, dvdx, dvdy, dwdx, dwdy, dudz, dvdz, dwdz)
       !$acc enter data create(d_11, d_22, d_33, d_12, d_13, d_23)
@@ -278,7 +359,7 @@ contains
             d_23(k) = dwdy(k) + dvdz(k)
          end do
 
-         if (config_les_model == "3d_smagorinsky") then
+         if (les_model_opt == LES_MODEL_3D_SMAGORINSKY) then
 
             !$acc loop vector
             do k=1, nVertLevels
@@ -290,7 +371,7 @@ contains
                ! eddy_visc_vert(k,iCell) = eddy_visc_horz(k,iCell)
             end do
 
-         else if (config_les_model == "prognostic_1.5_order") then
+         else if (les_model_opt == LES_MODEL_PROGNOSTIC_15_ORDER) then
 
             !$acc loop vector
             do k=1,nVertLevels  ! bound the tke here, currently hardwired
@@ -364,7 +445,7 @@ contains
 
 !MGD            call mpas_log_write(' in les_models, no les scheme for '//trim(config_les_model), messageType=MPAS_LOG_CRIT)
 
-         end if ! end of config_les_model test
+         end if ! end of les_model_opt test
 
       end do ! loop over all owned cells (columns)
 
@@ -485,7 +566,7 @@ contains
                                 config_mix_full, h_mom_eddy_visc4, v_mom_eddy_visc2,                         &
                                 config_del4u_div_factor, zgrid,                                              &
                                 eddy_visc_horz, eddy_visc_vert, zz, rdzu, rdzw,                              &
-                                fzm, fzp, config_les_model, config_les_surface,                              &
+                                fzm, fzp, les_model_opt, les_surface_opt,                                    &
                                 config_surface_drag_coefficient,                                             &
                                 delsq_u, delsq_vorticity, delsq_divergence,                                  &
                                 u, v, divergence, vorticity, rho_edge, rho_zz, u_init, v_init, ustm,         &
@@ -501,8 +582,8 @@ contains
       integer, intent(in) :: nCells, nEdges, nVertices
       logical, intent(in) :: config_mix_full
 
-      character (len=StrKIND) :: config_les_model
-      character (len=StrKIND) :: config_les_surface
+      integer, intent(in) :: les_model_opt
+      integer, intent(in) :: les_surface_opt
 
       integer, dimension(2,nEdges+1), intent(in) :: cellsOnEdge
       integer, dimension(2,nEdges+1), intent(in) :: verticesOnEdge
@@ -568,9 +649,8 @@ contains
       real (kind=RKIND) :: velocity_magnitude
       real (kind=RKIND) :: tau_12_factor
 
+
       DEBUG_WRITE(' begin u_dissipation_3d ')
-      DEBUG_WRITE(' les model is '//trim(config_les_model))
-      DEBUG_WRITE(' les surface is '//trim(config_les_surface))
       DEBUG_WRITE(' 4th order hyperviscosity is $r ' COMMA realArgs=(/h_mom_eddy_visc4/))
       DEBUG_WRITE(' 4th order divergence factor is $r ' COMMA realArgs=(/config_del4u_div_factor/))
 
@@ -585,7 +665,7 @@ contains
       !$acc parallel default(present)
 
       tau_12_factor = 0.0
-      if(config_les_model /= 'none') tau_12_factor = 1.0
+      if(les_model_opt /= LES_MODEL_NONE) tau_12_factor = 1.0
 
       !$acc loop gang worker
       do iEdge=edgeStart,edgeEnd
@@ -786,7 +866,7 @@ contains
 
       end if  ! vertical mixing of horizontal momentum for les formulation
 
-      if ( config_les_model /= "none") then
+      if ( les_model_opt /= LES_MODEL_NONE ) then
 
          !$acc parallel default(present)
 
@@ -812,11 +892,11 @@ contains
                turb_vflux(k) = - rho_k_at_w*zz_at_w*rdzu(k)*(u(k,iEdge)-u(k-1,iEdge))
             end do
 
-            if( config_les_surface == "specified" ) then
+            if( les_surface_opt == LES_SURFACE_SPECIFIED ) then
                velocity_magnitude = sqrt(u(1,iEdge)**2 + v(1,iEdge)**2)
                turb_vflux(1) = -rho_edge(1,iEdge)*config_surface_drag_coefficient*u(1,iEdge)*velocity_magnitude
                turb_vflux(nVertLevels+1) = turb_vflux(nVertLevels)
-            else if ( config_les_surface == "varying" ) then
+            else if ( les_surface_opt == LES_SURFACE_VARYING ) then
                ust_edge = 0.5*(ustm(cell1) + ustm(cell2))
                velocity_magnitude = max(sqrt(u(1,iEdge)**2 + v(1,iEdge)**2),0.1)
                turb_vflux(1) = -rho_edge(1,iEdge)*ust_edge*ust_edge*(u(1,iEdge)/velocity_magnitude)
@@ -859,7 +939,7 @@ contains
                                 delsq_w,                                                  &
                                 w, rho_edge, rho_zz, divergence, zz,                      &
                                 eddy_visc_horz, eddy_visc_vert,                           &
-                                config_les_model, config_les_surface,                     &
+                                les_model_opt, les_surface_opt,                           &
                                 tend_w_euler                                             )
 
 
@@ -879,8 +959,8 @@ contains
 
       integer, dimension(2,nEdges+1), intent(in) :: cellsOnEdge
 
-      character (len=StrKIND) :: config_les_model
-      character (len=StrKIND) :: config_les_surface
+      integer, intent(in) :: les_model_opt
+      integer, intent(in) :: les_surface_opt
 
       real (kind=RKIND), intent(in) :: h_mom_eddy_visc4
       real (kind=RKIND), intent(in) :: v_mom_eddy_visc2
@@ -913,6 +993,7 @@ contains
       integer :: cell1, cell2, iEdge, iCell, i, k
       real (kind=RKIND) :: r_areaCell, edge_sign, w_turb_flux
 
+
 !  !OMP BARRIER  why is this openmp barrier here???
 
       ! del^4 horizontal filter.  We compute this as del^2 ( del^2 (w) ).
@@ -922,8 +1003,6 @@ contains
 
 
       DEBUG_WRITE(' begin w_dissipation_3d ')
-      DEBUG_WRITE(' les model is '//trim(config_les_model))
-      DEBUG_WRITE(' les surface is '//trim(config_les_surface))
       DEBUG_WRITE(' 4th order hyperviscosity is $r ' COMMA realArgs=(/h_mom_eddy_visc4/))
 
       !$acc enter data create(turb_vflux)
@@ -1020,7 +1099,7 @@ contains
 
       end if
 
-      if ( config_les_model /= "none") then
+      if ( les_model_opt /= LES_MODEL_NONE ) then
 
          !$acc parallel default(present)
 
@@ -1070,7 +1149,7 @@ contains
                                          eddy_visc_horz, eddy_visc_vert,                           &
                                          bv_freq2, config_len_disp, scalars, tend_scalars,         &
                                          index_tke, index_qv, num_scalars_dummy, mix_scalars,      &
-                                         config_les_model, config_les_surface, clock, dt,          &
+                                         les_model_opt, les_surface_opt, clock, dt,                &
                                          config_surface_heat_flux, config_surface_moisture_flux,   &
                                          uReconstructZonal, uReconstructMeridional,                &
                                          hfx, qfx,                                                 &
@@ -1096,8 +1175,8 @@ contains
 
       logical, intent(in) :: config_mix_full, mix_scalars
 
-      character (len=StrKIND) :: config_les_model
-      character (len=StrKIND) :: config_les_surface
+      integer, intent(in) :: les_model_opt
+      integer, intent(in) :: les_surface_opt
 
       type (MPAS_Clock_type), intent(in) :: clock
       real (kind=RKIND), intent(in) :: dt
@@ -1157,8 +1236,6 @@ contains
 
 
       DEBUG_WRITE(' begin scalar_dissipation_3d ')
-      DEBUG_WRITE(' les model is '//trim(config_les_model))
-      DEBUG_WRITE(' les surface is '//trim(config_les_surface))
       DEBUG_WRITE(' 4th order hyperviscosity is $r ' COMMA realArgs=(/h_theta_eddy_visc4/))
 
       if( mix_scalars .and. (dynamics_substep == 1)) call mpas_log_write(' scalar mixing on ')
@@ -1373,7 +1450,7 @@ contains
 
       end if
 
-      if ( config_les_model /= "none") then
+      if ( les_model_opt /= LES_MODEL_NONE ) then
 
          !$acc parallel default(present)
 
@@ -1384,7 +1461,7 @@ contains
             turb_vflux(nVertlevels+1) = 0.  !  no turbulent flux out of the domain
             turb_vflux(1) = 0.  !  lower bc flux handled where ???
 
-            if ( config_les_model == "3d_smagorinsky") then
+            if ( les_model_opt == LES_MODEL_3D_SMAGORINSKY ) then
                !$acc loop vector
                do k=2,nVertLevels
                   prandtl_1d_inverse(k) = prandtl_inv
@@ -1424,16 +1501,16 @@ contains
 
             ! test boundary conditions for supercell and les test cases
 
-            if( config_les_surface == "specified" .or. config_les_surface == "varying" ) then
+            if( les_surface_opt == LES_SURFACE_SPECIFIED .or. les_surface_opt == LES_SURFACE_VARYING ) then
 
-               if( config_les_surface == "specified" ) then
+               if( les_surface_opt == LES_SURFACE_SPECIFIED ) then
                   moisture_flux = config_surface_moisture_flux
                   heat_flux = config_surface_heat_flux
 
 !                 place holder routine for time-varying specified
 !                 call flux_les_sas( heat_flux, moisture_flux, clock, dt )
 
-               else if ( config_les_surface == "varying" ) then
+               else if ( les_surface_opt == LES_SURFACE_VARYING ) then
                   heat_flux = hfx(iCell)/rho_zz(1,iCell)/cp
                   moisture_flux = qfx(iCell)/rho_zz(1,iCell)
                endif
@@ -1484,7 +1561,7 @@ contains
                   end do
                end do
 
-               if( config_les_surface == "specified" .or.  config_les_surface == "varying" ) turb_vflux_scalars(index_qv,1) = moisture_flux ! lower b.c. for qv
+               if( les_surface_opt == LES_SURFACE_SPECIFIED .or. les_surface_opt == LES_SURFACE_VARYING ) turb_vflux_scalars(index_qv,1) = moisture_flux ! lower b.c. for qv
 
                !$acc loop vector collapse(2)
                do k=1,nVertLevels

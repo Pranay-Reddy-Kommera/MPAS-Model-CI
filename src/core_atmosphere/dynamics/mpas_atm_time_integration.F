@@ -4791,6 +4791,8 @@ module atm_time_integration
    !                
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
+      use mpas_atm_dissipation_models, only : les_model_from_string, les_surface_from_string
+
       implicit none
 
       !
@@ -4868,6 +4870,7 @@ module atm_time_integration
       character (len=StrKIND), pointer :: config_horiz_mixing
       character (len=StrKIND), pointer :: config_les_model
       character (len=StrKIND), pointer :: config_les_surface
+      integer :: les_model_opt, les_surface_opt
       real (kind=RKIND), pointer :: config_surface_heat_flux
       real (kind=RKIND), pointer :: config_surface_moisture_flux
       real (kind=RKIND), pointer :: config_surface_drag_coefficient
@@ -5052,6 +5055,9 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'cf2', cf2)
       call mpas_pool_get_array(mesh, 'cf3', cf3)
 
+      les_model_opt = les_model_from_string(config_les_model)
+      les_surface_opt = les_surface_from_string(config_les_surface)
+
       call atm_compute_dyn_tend_work(nCells, nEdges, nVertices, nVertLevels, &
          nCellsSolve, nEdgesSolve, vertexDegree, maxEdges, maxEdges2, num_scalars, index_qv, index_qc, moist_start, moist_end, &
          tend_scalars, &
@@ -5066,8 +5072,8 @@ module atm_time_integration
          latCell, latEdge, angleEdge, u_init, v_init, advCellsForEdge, nAdvCellsForEdge, adv_coefs, adv_coefs_3rd, &
          rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, defc_a, defc_b, &
          deformation_coef_c2,deformation_coef_s2,deformation_coef_cs,deformation_coef_c,deformation_coef_s, &
-         tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_mix_scalars, config_horiz_mixing, config_les_model, &
-         config_les_surface, prandtl_3d_inv, config_del4u_div_factor, &
+         tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_mix_scalars, config_horiz_mixing, les_model_opt, &
+         les_surface_opt, prandtl_3d_inv, config_del4u_div_factor, &
          config_h_mom_eddy_visc2, config_v_mom_eddy_visc2, config_h_theta_eddy_visc2, config_v_theta_eddy_visc2, &
          config_h_theta_eddy_visc4, config_h_mom_eddy_visc4, config_visc4_2dsmag, config_len_disp, rk_step, dynamics_substep, dt, &
          config_mpas_cam_coef, &
@@ -5101,8 +5107,8 @@ module atm_time_integration
       latCell, latEdge, angleEdge, u_init, v_init, advCellsForEdge, nAdvCellsForEdge, adv_coefs, adv_coefs_3rd, &
       rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, defc_a, defc_b, &
       deformation_coef_c2,deformation_coef_s2,deformation_coef_cs,deformation_coef_c,deformation_coef_s, &
-      tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_mix_scalars, config_horiz_mixing, config_les_model, &
-      config_les_surface, prandtl_3d_inv, config_del4u_div_factor, &
+      tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_mix_scalars, config_horiz_mixing, les_model_opt, &
+      les_surface_opt, prandtl_3d_inv, config_del4u_div_factor, &
       config_h_mom_eddy_visc2, config_v_mom_eddy_visc2, config_h_theta_eddy_visc2, config_v_theta_eddy_visc2, &
       config_h_theta_eddy_visc4, config_h_mom_eddy_visc4, config_visc4_2dsmag, config_len_disp, rk_step, dynamics_substep, dt, &
       config_mpas_cam_coef, &
@@ -5115,6 +5121,7 @@ module atm_time_integration
 
 
       use mpas_atm_dimensions
+      use mpas_atm_dissipation_models, only : LES_MODEL_NONE
 
 
       implicit none
@@ -5225,8 +5232,8 @@ module atm_time_integration
       real (kind=RKIND) :: coef_3rd_order, c_s
       logical :: config_mix_full, config_mix_scalars
       character (len=StrKIND) :: config_horiz_mixing
-      character (len=StrKIND) :: config_les_model
-      character (len=StrKIND) :: config_les_surface
+      integer, intent(in) :: les_model_opt
+      integer, intent(in) :: les_surface_opt
       real (kind=RKIND) :: config_surface_heat_flux
       real (kind=RKIND) :: config_surface_moisture_flux
       real (kind=RKIND) :: config_surface_drag_coefficient
@@ -5297,7 +5304,7 @@ module atm_time_integration
       if (perturbation_coriolis) then
          !$acc enter data copyin(u_init, v_init)
       end if
-      if (trim(config_les_model) /= 'none') then
+      if (les_model_opt /= LES_MODEL_NONE) then
          !$acc enter data copyin(exner, pressure_b, bn2)
       end if
       !$acc enter data copyin(ustm, hfx, qfx)
@@ -5333,7 +5340,7 @@ module atm_time_integration
       !$acc enter data copyin(rw_save, rt_diabatic_tend)
       !$acc enter data create(rthdynten)
       !$acc enter data copyin(t_init)
-      if (trim(config_les_model) /= 'none') then
+      if (les_model_opt /= LES_MODEL_NONE) then
          !$acc enter data copyin(ur_cell, vr_cell)
       else
 #ifdef CURVATURE
@@ -5369,7 +5376,7 @@ module atm_time_integration
          ! Smagorinsky eddy viscosity, based on horizontal deformation (in this case on model coordinate surfaces).
          ! The integration coefficients were precomputed and stored in deformation_coef_*
 
-         if(config_les_model == "none") then
+         if(les_model_opt == LES_MODEL_NONE) then
 
             if(config_horiz_mixing == "2d_smagorinsky") then
 
@@ -5396,14 +5403,14 @@ module atm_time_integration
 
             end if
 
-         else if (config_les_model /= "none") then
+         else if (les_model_opt /= LES_MODEL_NONE) then
 
             ! call mpas_log_write(' BV call, index qv, qc, tke $i $i $i ', intArgs=(/index_qv, index_qc, index_tke/))
 
             call calculate_n2( bn2, theta_m, exner, pressure_b, pp, zgrid, scalars, index_qv, index_qc, qtot, &
                                cellStart, cellEnd, nCells)
       
-            call les_models( config_les_model, config_les_surface, dynamics_substep, eddy_visc_horz, eddy_visc_vert,                  &
+            call les_models( les_model_opt, les_surface_opt, dynamics_substep, eddy_visc_horz, eddy_visc_vert, &
                              u, v, ur_cell, vr_cell,                                            &
                              w, c_s, bn2, zgrid, config_len_disp,                               &
                              deformation_coef_c2, deformation_coef_s2, deformation_coef_cs,     &
@@ -5620,7 +5627,7 @@ module atm_time_integration
                                  config_mix_full, h_mom_eddy_visc4, v_mom_eddy_visc2,                         &
                                  config_del4u_div_factor, zgrid,                                              &
                                  eddy_visc_horz, eddy_visc_vert, zz, rdzu, rdzw,                              &
-                                 fzm, fzp, config_les_model, config_les_surface,                              &
+                                 fzm, fzp, les_model_opt, les_surface_opt,                                    &
                                  config_surface_drag_coefficient,                                             &
                                  delsq_u, delsq_vorticity, delsq_divergence,                                  &
                                  u, v, divergence, vorticity, rho_edge, rho_zz, u_init, v_init, ustm, tend_u_euler )
@@ -5762,7 +5769,7 @@ module atm_time_integration
                                  delsq_w,                                                  &
                                  w, rho_edge, rho_zz, divergence, zz,                      &
                                  eddy_visc_horz, eddy_visc_vert,                           &
-                                 config_les_model, config_les_surface,                     &
+                                 les_model_opt, les_surface_opt,                           &
                                  tend_w_euler                                             )
 
       end if ! mixing for w computed in first rk_step
@@ -5922,7 +5929,7 @@ module atm_time_integration
                                          eddy_visc_horz, eddy_visc_vert,                           &
                                          bn2, config_len_disp, scalars, tend_scalars,              &
                                          index_tke, index_qv, num_scalars, config_mix_scalars,     &
-                                         config_les_model, config_les_surface, clock, dt,          &
+                                         les_model_opt, les_surface_opt, clock, dt,                &
                                          config_surface_heat_flux, config_surface_moisture_flux,   &
                                          ur_cell, vr_cell,                                         &
                                          hfx, qfx,                                                 &
@@ -5982,7 +5989,7 @@ module atm_time_integration
       if (perturbation_coriolis) then
          !$acc exit data delete(u_init, v_init)
       end if
-      if (trim(config_les_model) /= 'none') then
+      if (les_model_opt /= LES_MODEL_NONE) then
          !$acc exit data delete(exner, pressure_b)
          !$acc exit data copyout(bn2)
       end if
@@ -6019,7 +6026,7 @@ module atm_time_integration
       !$acc exit data delete(rw_save, rt_diabatic_tend)
       !$acc exit data copyout(rthdynten)
       !$acc exit data delete(t_init)
-      if (trim(config_les_model) /= 'none') then
+      if (les_model_opt /= LES_MODEL_NONE) then
          !$acc exit data delete(ur_cell, vr_cell)
       else
 #ifdef CURVATURE
