@@ -552,8 +552,6 @@
 			<var name="zb3"/>
 			<var name="dss"/>
 			<var name="deriv_two"/>
-			<var name="defc_a"/>
-			<var name="defc_b"/>
 			<var name="coeffs_reconstruct"/>
 #ifdef MPAS_CAM_DYCORE
 			<var name="cell_gradient_coef_x"/>
@@ -1619,13 +1617,6 @@
                 <var name="nAdvCellsForEdge" type="integer" dimensions="nEdges" units="-"
                      description="Number of cells used to reconstruct a cell-based field at an edge"/>
 
-                <!-- Space needed for deformation calculation weights -->
-                <var name="defc_a" type="real" dimensions="maxEdges nCells" units="unitless"
-                     description="Coefficients for computing the off-diagonal components of the horizontal deformation"/>
-
-                <var name="defc_b" type="real" dimensions="maxEdges nCells" units="unitless"
-                     description="Coefficients for computing the diagonal components of the horizontal deformation"/>
-
 #ifdef MPAS_CAM_DYCORE
                 <var name="cell_gradient_coef_x" type="real" dimensions="maxEdges nCells" units="m^-1"
                      description="Coefficients for computing the x (zonal) derivative of a cell-centered variable"/>
@@ -1633,6 +1624,7 @@
                 <var name="cell_gradient_coef_y" type="real" dimensions="maxEdges nCells" units="m^-1"
                      description="Coefficients for computing the y (meridional) derivative of a cell-centered variable"/>
 #endif
+                <!-- Space needed for deformation calculation weights -->
                 <var name="deformation_coef_c2" type="real" dimensions="maxEdges nCells" units="unitless"
                      description="Coefficients for computing the cos-squared terms of the 3d deformation"/>
 
