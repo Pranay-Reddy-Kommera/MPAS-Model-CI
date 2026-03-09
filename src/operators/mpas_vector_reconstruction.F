@@ -202,7 +202,8 @@ module mpas_vector_reconstruction
 !>  Input: grid meta data and vector component data residing at cell edges
 !>  Output: reconstructed vector field (measured in X,Y,Z) located at cell centers
 !-----------------------------------------------------------------------
-  subroutine mpas_reconstruct_2d(meshPool, u, uReconstructX, uReconstructY, uReconstructZ, uReconstructZonal, uReconstructMeridional, includeHalos)!{{{
+  subroutine mpas_reconstruct_2d(meshPool, u, uReconstructX, uReconstructY, uReconstructZ, &
+                          uReconstructZonal, uReconstructMeridional, includeHalos, lACC)!{{{
 
     implicit none
 
@@ -214,9 +215,11 @@ module mpas_vector_reconstruction
     real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructZonal !< Output: Zonal Component of velocity reconstructed to cell centers
     real (kind=RKIND), dimension(:,:), intent(out) :: uReconstructMeridional !< Output: Meridional Component of velocity reconstructed to cell centers
     logical, optional, intent(in) :: includeHalos !< Input: Optional logical that allows reconstruction over halo regions
+    logical, optional, intent(in) :: lACC !< Input: Optional logical that controls execution on the GPU with OpenACC
 
     !   temporary arrays needed in the compute procedure
     logical :: includeHalosLocal
+    logical :: lACCLocal
     integer, pointer :: nCells_ptr, nVertLevels_ptr
     integer :: nCells, nVertLevels
     integer, dimension(:,:), pointer :: edgesOnCell
@@ -234,6 +237,12 @@ module mpas_vector_reconstruction
        includeHalosLocal = includeHalos
     else
        includeHalosLocal = .false.
+    end if
+
+    if ( present(lACC) ) then
+       lACCLocal = lACC
+    else
+       lACCLocal = .false.
     end if
 
     ! stored arrays used during compute procedure
@@ -258,19 +267,9 @@ module mpas_vector_reconstruction
 
     call mpas_pool_get_config(meshPool, 'on_a_sphere', on_a_sphere)
 
-    MPAS_ACC_TIMER_START('mpas_reconstruct_2d [ACC_data_xfer]')
-    ! Only use sections needed, nCells may be all cells or only non-halo cells
-    !$acc enter data copyin(coeffs_reconstruct(:,:,1:nCells),nEdgesOnCell(1:nCells), &
-    !$acc                   edgesOnCell(:,1:nCells),latCell(1:nCells),lonCell(1:nCells))
-    !$acc enter data copyin(u(:,:))
-    !$acc enter data create(uReconstructX(:,1:nCells),uReconstructY(:,1:nCells), &
-    !$acc                   uReconstructZ(:,1:nCells),uReconstructZonal(:,1:nCells), &
-    !$acc                   uReconstructMeridional(:,1:nCells))
-    MPAS_ACC_TIMER_STOP('mpas_reconstruct_2d [ACC_data_xfer]')
-
     ! loop over cell centers
     !$omp do schedule(runtime)
-    !$acc parallel default(present)
+    !$acc parallel default(present) if(lACCLocal)
     !$acc loop gang
     do iCell = 1, nCells
       ! initialize the reconstructed vectors
@@ -305,7 +304,7 @@ module mpas_vector_reconstruction
 
     if (on_a_sphere) then
       !$omp do schedule(runtime)
-      !$acc parallel default(present)
+      !$acc parallel default(present) if(lACCLocal)
       !$acc loop gang
       do iCell = 1, nCells
         clat = cos(latCell(iCell))
@@ -325,7 +324,7 @@ module mpas_vector_reconstruction
       !$omp end do
     else
       !$omp do schedule(runtime)
-      !$acc parallel default(present)
+      !$acc parallel default(present) if(lACCLocal)
       !$acc loop gang vector collapse(2)
       do iCell = 1, nCells
         do k = 1, nVertLevels
@@ -336,15 +335,6 @@ module mpas_vector_reconstruction
       !$acc end parallel
       !$omp end do
     end if
-
-    MPAS_ACC_TIMER_START('mpas_reconstruct_2d [ACC_data_xfer]')
-    !$acc exit data delete(coeffs_reconstruct(:,:,1:nCells),nEdgesOnCell(1:nCells), &
-    !$acc                   edgesOnCell(:,1:nCells),latCell(1:nCells),lonCell(1:nCells))
-    !$acc exit data delete(u(:,:))
-    !$acc exit data copyout(uReconstructX(:,1:nCells),uReconstructY(:,1:nCells), &
-    !$acc                   uReconstructZ(:,1:nCells), uReconstructZonal(:,1:nCells), &
-    !$acc                   uReconstructMeridional(:,1:nCells))
-    MPAS_ACC_TIMER_STOP('mpas_reconstruct_2d [ACC_data_xfer]')
 
   end subroutine mpas_reconstruct_2d!}}}
 
