@@ -1,0 +1,12 @@
+# Fortran Source Code Linting (stub)
+# Full implementation on feature-ci-test-cases branch.
+name: Fortran Linting
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stub:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Fortran linting workflow placeholder — see feature-ci-test-cases branch for full implementation."
