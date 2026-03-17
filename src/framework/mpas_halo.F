@@ -280,6 +280,29 @@ module mpas_halo
 
         call refactor_lists(domain, groupName, iErr)
 
+        ! Logic to return early if there are no neighbors to send to
+        if ( newGroup% nGroupSendNeighbors <=0 ) then
+            return
+        end if
+
+
+        ! Always copy in the main data member first
+        !$acc enter data copyin(newGroup)
+        ! Then the data in the members of the type
+        !$acc enter data copyin(newGroup % recvBuf(:), newGroup % sendBuf(:))
+        !$acc enter data copyin(newGroup % fields(:))
+        do i = 1, newGroup % nFields
+            !$acc enter data copyin(newGroup % fields(i))
+            !$acc enter data copyin(newGroup % fields(i) % nSendLists(:,:))
+            !$acc enter data copyin(newGroup % fields(i) % packOffsets(:))
+            !$acc enter data copyin(newGroup % fields(i) % sendListSrc(:,:,:))
+            !$acc enter data copyin(newGroup % fields(i) % sendListDst(:,:,:))
+            !$acc enter data copyin(newGroup % fields(i) % nRecvLists(:,:))
+            !$acc enter data copyin(newGroup % fields(i) % unpackOffsets(:))
+            !$acc enter data copyin(newGroup % fields(i) % recvListSrc(:,:,:))
+            !$acc enter data copyin(newGroup % fields(i) % recvListDst(:,:,:))
+        end do
+
     end subroutine mpas_halo_exch_group_complete
 
 
@@ -349,15 +372,26 @@ module mpas_halo
             deallocate(cursor % fields(i) % compactHaloInfo)
             deallocate(cursor % fields(i) % compactSendLists)
             deallocate(cursor % fields(i) % compactRecvLists)
+            !$acc exit data delete(cursor % fields(i) % nSendLists(:,:))
             deallocate(cursor % fields(i) % nSendLists)
+            !$acc exit data delete(cursor % fields(i) % sendListSrc(:,:,:))
             deallocate(cursor % fields(i) % sendListSrc)
+            !$acc exit data delete(cursor % fields(i) % sendListDst(:,:,:))
             deallocate(cursor % fields(i) % sendListDst)
+            !$acc exit data delete(cursor % fields(i) % packOffsets(:))
             deallocate(cursor % fields(i) % packOffsets)
+            !$acc exit data delete(cursor % fields(i) % nRecvLists(:,:))
             deallocate(cursor % fields(i) % nRecvLists)
+            !$acc exit data delete(cursor % fields(i) % recvListSrc(:,:,:))
             deallocate(cursor % fields(i) % recvListSrc)
+            !$acc exit data delete(cursor % fields(i) % recvListDst(:,:,:))
             deallocate(cursor % fields(i) % recvListDst)
+            !$acc exit data delete(cursor % fields(i) % unpackOffsets(:))
             deallocate(cursor % fields(i) % unpackOffsets)
+            !$acc exit data delete(cursor % fields(i))
         end do
+        ! Use finalize here in-case the copyins in ..._complete increment the reference counter
+        !$acc exit data finalize delete(cursor % fields(:))
         deallocate(cursor % fields)
         deallocate(cursor % groupPackOffsets)
         deallocate(cursor % groupSendNeighbors)
@@ -368,10 +402,14 @@ module mpas_halo
         deallocate(cursor % groupToFieldRecvIdx)
         deallocate(cursor % groupRecvOffsets)
         deallocate(cursor % groupRecvCounts)
+        !$acc exit data delete(cursor % sendBuf(:))
         deallocate(cursor % sendBuf)
+        !$acc exit data delete(cursor % recvBuf(:))
         deallocate(cursor % recvBuf)
         deallocate(cursor % sendRequests)
         deallocate(cursor % recvRequests)
+        ! Finalize here as well, just in-case
+        !$acc exit data finalize delete(cursor)
         deallocate(cursor)
 
     end subroutine mpas_halo_exch_group_destroy
@@ -577,6 +615,11 @@ module mpas_halo
                                 messageType=MPAS_LOG_CRIT)
         end if
 
+        ! Logic to return early if there are no neighbors to send to
+        if ( group% nGroupSendNeighbors <= 0 ) then
+            return
+        end if
+
         !
         ! Get the rank of this task and the MPI communicator to use from the first field in
         ! the group; all fields should be using the same communicator, so this should not
@@ -598,9 +641,11 @@ module mpas_halo
                 bufstart = group % groupRecvOffsets(i)
                 bufend = group % groupRecvOffsets(i) + group % groupRecvCounts(i) - 1
 !TO DO: how do we determine appropriate type here?
+                !$acc host_data use_device(group % recvBuf)
                 call MPI_Irecv(group % recvBuf(bufstart:bufend), group % groupRecvCounts(i), MPI_REALKIND, &
                                group % groupRecvNeighbors(i), group % groupRecvNeighbors(i), comm, &
                                group % recvRequests(i), mpi_ierr)
+                !$acc end host_data
             else
                 group % recvRequests(i) = MPI_REQUEST_NULL
             end if
@@ -642,8 +687,11 @@ module mpas_halo
                     !
                     ! Pack send buffer for all neighbors for current field
                     !
+                    !$acc parallel default(present) attach(group % fields(i) % r1arr)
+                    !$acc loop gang collapse(2)
                     do iEndp = 1, nSendEndpts
                         do iHalo = 1, nHalos
+                            !$acc loop vector
                             do j = 1, maxNSendList
                                 if (j <= nSendLists(iHalo,iEndp)) then
                                     group % sendBuf(packOffsets(iEndp) + sendListDst(j,iHalo,iEndp)) = &
@@ -652,6 +700,7 @@ module mpas_halo
                             end do
                         end do
                     end do
+                    !$acc end parallel
 
                 !
                 ! Packing code for 2-d real-valued fields
@@ -663,9 +712,16 @@ module mpas_halo
                     !
                     ! Pack send buffer for all neighbors for current field
                     !
+                    ! Use data regions for specificity and so the reference or attachment counters are easier to make sense of
+                    ! Present should also cause an attach action. OpenACC Spec2.7 Section 2.7.2 describes 'attach action'
+                    ! !$acc data present(group) present(group % fields(i)) present(group % sendBuf(:), group % fields(i) % sendListSrc(:,:,:))
+
+                    !$acc parallel default(present) attach(group % fields(i) % r2arr)
+                    !$acc loop gang collapse(3)
                     do iEndp = 1, nSendEndpts
                         do iHalo = 1, nHalos
                             do j = 1, maxNSendList
+                                !$acc loop vector
                                 do i1 = 1, dim1
                                     if (j <= nSendLists(iHalo,iEndp)) then
                                         group % sendBuf(packOffsets(iEndp) + dim1 * (sendListDst(j,iHalo,iEndp) - 1) + i1) = &
@@ -675,6 +731,7 @@ module mpas_halo
                             end do
                         end do
                     end do
+                    !$acc end parallel
 
                 !
                 ! Packing code for 3-d real-valued fields
@@ -686,10 +743,13 @@ module mpas_halo
                     !
                     ! Pack send buffer for all neighbors for current field
                     !
+                    !$acc parallel default(present) attach(group % fields(i) % r3arr)
+                    !$acc loop gang collapse(4)
                     do iEndp = 1, nSendEndpts
                         do iHalo = 1, nHalos
                             do j = 1, maxNSendList
                                 do i2 = 1, dim2
+                                !$acc loop vector
                                 do i1 = 1, dim1
                                     if (j <= nSendLists(iHalo,iEndp)) then
                                         group % sendBuf(packOffsets(iEndp) + dim1*dim2*(sendListDst(j,iHalo,iEndp) - 1) &
@@ -701,6 +761,7 @@ module mpas_halo
                             end do
                         end do
                     end do
+                    !$acc end parallel
 
                 end select
             end if
@@ -714,9 +775,11 @@ module mpas_halo
                 bufstart = group % groupSendOffsets(i)
                 bufend = group % groupSendOffsets(i) + group % groupSendCounts(i) - 1
 !TO DO: how do we determine appropriate type here?
+                !$acc host_data use_device(group % sendBuf)
                 call MPI_Isend(group % sendBuf(bufstart:bufend), group % groupSendCounts(i), MPI_REALKIND, &
                                group % groupSendNeighbors(i), rank, comm, &
                                group % sendRequests(i), mpi_ierr)
+                !$acc end host_data
             else
                 group % sendRequests(i) = MPI_REQUEST_NULL
             end if
@@ -771,7 +834,10 @@ module mpas_halo
                         !
                         ! Unpack recv buffer from all neighbors for current field
                         !
+                        !$acc parallel default(present) attach(group % fields(i) % r1arr)
+                        !$acc loop gang
                         do iHalo = 1, nHalos
+                            !$acc loop vector
                             do j = 1, maxNRecvList
                                 if (j <= nRecvLists(iHalo,iEndp)) then
                                     group % fields(i) % r1arr(recvListDst(j,iHalo,iEndp)) = &
@@ -779,6 +845,7 @@ module mpas_halo
                                 end if
                             end do
                         end do
+                        !$acc end parallel
 
                     !
                     ! Unpacking code for 2-d real-valued fields
@@ -787,8 +854,12 @@ module mpas_halo
                         !
                         ! Unpack recv buffer from all neighbors for current field
                         !
+                        !$acc parallel default(present) attach(group % fields(i) % r2arr)
+                        !$acc loop gang
                         do iHalo = 1, nHalos
+                            !$acc loop worker
                             do j = 1, maxNRecvList
+                                !$acc loop vector
                                 do i1 = 1, dim1
                                     if (j <= nRecvLists(iHalo,iEndp)) then
                                         group % fields(i) % r2arr(i1, recvListDst(j,iHalo,iEndp)) = &
@@ -797,6 +868,7 @@ module mpas_halo
                                 end do
                             end do
                         end do
+                        !$acc end parallel
 
                     !
                     ! Unpacking code for 3-d real-valued fields
@@ -805,8 +877,11 @@ module mpas_halo
                         !
                         ! Unpack recv buffer from all neighbors for current field
                         !
+                        !$acc parallel default(present) attach(group % fields(i) % r3arr)
+                        !$acc loop gang collapse(2)
                         do iHalo = 1, nHalos
                             do j = 1, maxNRecvList
+                                !$acc loop vector collapse(2)
                                 do i2 = 1, dim2
                                 do i1 = 1, dim1
                                     if (j <= nRecvLists(iHalo,iEndp)) then
@@ -818,6 +893,7 @@ module mpas_halo
                                 end do
                             end do
                         end do
+                        !$acc end parallel
 
                     end select
                 end if
