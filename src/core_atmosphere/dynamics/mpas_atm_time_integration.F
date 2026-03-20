@@ -291,8 +291,6 @@ module atm_time_integration
       real (kind=RKIND), dimension(:), pointer :: latCell
       real (kind=RKIND), dimension(:), pointer :: lonCell
       real (kind=RKIND), dimension(:,:,:), pointer :: coeffs_reconstruct
-      real (kind=RKIND), dimension(:,:), pointer :: defc_a
-      real (kind=RKIND), dimension(:,:), pointer :: defc_b
       real (kind=RKIND), dimension(:), pointer :: latEdge
       real (kind=RKIND), dimension(:), pointer :: angleEdge
       real (kind=RKIND), dimension(:), pointer :: meshScalingDel2
@@ -484,12 +482,6 @@ module atm_time_integration
 
       call mpas_pool_get_array(mesh, 'coeffs_reconstruct', coeffs_reconstruct)
       !$acc enter data copyin(coeffs_reconstruct)
-
-      call mpas_pool_get_array(mesh, 'defc_a', defc_a)
-      !$acc enter data copyin(defc_a)
-
-      call mpas_pool_get_array(mesh, 'defc_b', defc_b)
-      !$acc enter data copyin(defc_b)
 
       call mpas_pool_get_array(mesh, 'latEdge', latEdge)
       !$acc enter data copyin(latEdge)
@@ -1560,8 +1552,6 @@ module atm_time_integration
       real (kind=RKIND), dimension(:), pointer :: latCell
       real (kind=RKIND), dimension(:), pointer :: lonCell
       real (kind=RKIND), dimension(:,:,:), pointer :: coeffs_reconstruct
-      real (kind=RKIND), dimension(:,:), pointer :: defc_a
-      real (kind=RKIND), dimension(:,:), pointer :: defc_b
       real (kind=RKIND), dimension(:), pointer :: latEdge
       real (kind=RKIND), dimension(:), pointer :: angleEdge
       real (kind=RKIND), dimension(:), pointer :: meshScalingDel2
@@ -1752,12 +1742,6 @@ module atm_time_integration
 
       call mpas_pool_get_array(mesh, 'coeffs_reconstruct', coeffs_reconstruct)
       !$acc exit data delete(coeffs_reconstruct)
-
-      call mpas_pool_get_array(mesh, 'defc_a', defc_a)
-      !$acc exit data delete(defc_a)
-
-      call mpas_pool_get_array(mesh, 'defc_b', defc_b)
-      !$acc exit data delete(defc_b)
 
       call mpas_pool_get_array(mesh, 'latEdge', latEdge)
       !$acc exit data delete(latEdge)
@@ -5882,7 +5866,6 @@ module atm_time_integration
       real (kind=RKIND), pointer :: r_earth
       real (kind=RKIND), dimension(:,:), pointer :: ur_cell, vr_cell
 
-      real (kind=RKIND), dimension(:,:), pointer :: defc_a, defc_b
       real (kind=RKIND), dimension(:,:), pointer :: deformation_coef_c2, deformation_coef_s2, deformation_coef_cs
       real (kind=RKIND), dimension(:,:), pointer :: deformation_coef_c, deformation_coef_s
       real (kind=RKIND), dimension(:,:), pointer :: prandtl_3d_inv
@@ -6019,8 +6002,6 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'latCell', latCell)
       call mpas_pool_get_array(mesh, 'latEdge', latEdge)
       call mpas_pool_get_array(mesh, 'angleEdge', angleEdge)
-      call mpas_pool_get_array(mesh, 'defc_a', defc_a)
-      call mpas_pool_get_array(mesh, 'defc_b', defc_b)
       call mpas_pool_get_array(mesh, 'deformation_coef_c2', deformation_coef_c2)
       call mpas_pool_get_array(mesh, 'deformation_coef_s2', deformation_coef_s2)
       call mpas_pool_get_array(mesh, 'deformation_coef_cs', deformation_coef_cs)
@@ -6096,7 +6077,7 @@ module atm_time_integration
          theta_m_save, exner, rr_save, scalars, tend_u_euler, tend_w_euler, tend_theta_euler, deriv_two, &
          cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnEdge, cellsOnCell, edgesOnVertex, nEdgesOnCell, nEdgesOnEdge, &
          latCell, latEdge, angleEdge, u_init, v_init, advCellsForEdge, nAdvCellsForEdge, adv_coefs, adv_coefs_3rd, &
-         rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, defc_a, defc_b, &
+         rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, &
          deformation_coef_c2,deformation_coef_s2,deformation_coef_cs,deformation_coef_c,deformation_coef_s, &
          tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_mix_scalars, config_horiz_mixing, les_model_opt, &
          les_surface_opt, prandtl_3d_inv, config_del4u_div_factor, &
@@ -6131,7 +6112,7 @@ module atm_time_integration
       theta_m_save, exner, rr_save, scalars, tend_u_euler, tend_w_euler, tend_theta_euler, deriv_two, &
       cellsOnEdge, verticesOnEdge, edgesOnCell, edgesOnEdge, cellsOnCell, edgesOnVertex, nEdgesOnCell, nEdgesOnEdge, &
       latCell, latEdge, angleEdge, u_init, v_init, advCellsForEdge, nAdvCellsForEdge, adv_coefs, adv_coefs_3rd, &
-      rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, defc_a, defc_b, &
+      rdzu, rdzw, fzm, fzp, qv_init, t_init, cf1, cf2, cf3, r_earth, ur_cell, vr_cell, &
       deformation_coef_c2,deformation_coef_s2,deformation_coef_cs,deformation_coef_c,deformation_coef_s, &
       tend_w_pgf, tend_w_buoy, coef_3rd_order, c_s, config_mix_full, config_mix_scalars, config_horiz_mixing, les_model_opt, &
       les_surface_opt, prandtl_3d_inv, config_del4u_div_factor, &
@@ -6247,8 +6228,6 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: ur_cell
       real (kind=RKIND), dimension(nVertLevels,nCells+1) :: vr_cell
 
-      real (kind=RKIND), dimension(maxEdges,nCells+1) :: defc_a
-      real (kind=RKIND), dimension(maxEdges,nCells+1) :: defc_b
       real (kind=RKIND), dimension(maxEdges,nCells+1) :: deformation_coef_c2, deformation_coef_s2, deformation_coef_cs
       real (kind=RKIND), dimension(maxEdges,nCells+1) :: deformation_coef_c, deformation_coef_s
 
