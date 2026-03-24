@@ -5,9 +5,21 @@ name: (GitHub Actions) Build All, Run NoGPU
 
 on:
   workflow_dispatch:
+    inputs:
+      mpas-repository:
+        description: 'MPAS source repo (e.g. MPAS-Dev/MPAS-Model). Leave empty to use this repo.'
+        required: false
+        default: ''
+      mpas-ref:
+        description: 'Git ref (branch, tag, or SHA) in the MPAS source repo'
+        required: false
+        default: ''
     branches:
       - master
       - develop
+
+# Container image pattern: ncarcisl/cisldev-x86_64-almalinux9-{compiler}-{mpi}:devel
+# MPI flags: openmpi needs --allow-run-as-root --oversubscribe (handled by run-mpas)
 
 jobs:
   #===========================================================================
@@ -17,56 +29,43 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # GCC builds
-          - compiler: gcc
-            mpi: mpich3
-            image: ncarcisl/cisldev-x86_64-almalinux9-gcc-mpich3:devel
-            build-target: gfortran
-          - compiler: gcc
-            mpi: openmpi
-            image: ncarcisl/cisldev-x86_64-almalinux9-gcc-openmpi:devel
-            build-target: gfortran
-          
-          # NVHPC builds (nogpu)
-          - compiler: nvhpc
-            mpi: mpich3
-            image: ncarcisl/cisldev-x86_64-almalinux9-nvhpc-mpich3:devel
-            build-target: nvhpc
-          - compiler: nvhpc
-            mpi: openmpi
-            image: ncarcisl/cisldev-x86_64-almalinux9-nvhpc-openmpi:devel
-            build-target: nvhpc
-          
-          # OneAPI builds
-          - compiler: oneapi
-            mpi: mpich3
-            image: ncarcisl/cisldev-x86_64-almalinux9-oneapi-mpich3:devel
-            build-target: intel
-          - compiler: oneapi
-            mpi: openmpi
-            image: ncarcisl/cisldev-x86_64-almalinux9-oneapi-openmpi:devel
-            build-target: intel
+        compiler: [gcc, nvhpc, oneapi]
+        mpi: [mpich3, mpich, openmpi]
+        io: [smiol, pio]
 
-    name: Build (${{ matrix.compiler }}, ${{ matrix.mpi }})
+    name: Build (${{ matrix.compiler }}, ${{ matrix.mpi }}, ${{ matrix.io }})
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.image }}
+      image: docker.io/ncarcisl/cisldev-x86_64-almalinux9-${{ matrix.compiler }}-${{ matrix.mpi }}:devel
 
     steps:
       - uses: actions/checkout@v4
         with:
+          repository: ${{ inputs.mpas-repository || github.repository }}
+          ref: ${{ inputs.mpas-ref || '' }}
           submodules: 'true'
+
+      - uses: actions/checkout@v4
+        if: ${{ inputs.mpas-repository != '' }}
+        with:
+          path: _ci
+          sparse-checkout: .github
+
+      - name: Overlay CI infrastructure
+        if: ${{ inputs.mpas-repository != '' }}
+        shell: bash
+        run: cp -r _ci/.github . && rm -rf _ci
 
       - name: Build MPAS-A
         uses: ./.github/actions/build-mpas
         with:
-          compiler: ${{ matrix.build-target }}
+          compiler: ${{ matrix.compiler }}
+          use-pio: ${{ matrix.io == 'pio' }}
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
-          name: exe-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-smiol
+          name: exe-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-${{ matrix.io }}
           path: atmosphere_model
           retention-days: 1
 
@@ -81,37 +80,13 @@ jobs:
       matrix:
         num-procs: [1, 4]
         compiler: [gcc, nvhpc, oneapi]
-        mpi: [mpich3, openmpi]
-        include:
-          - compiler: gcc
-            mpi: mpich3
-            image: ncarcisl/cisldev-x86_64-almalinux9-gcc-mpich3:devel
-            mpi-impl: mpich
-          - compiler: gcc
-            mpi: openmpi
-            image: ncarcisl/cisldev-x86_64-almalinux9-gcc-openmpi:devel
-            mpi-impl: openmpi
-          - compiler: nvhpc
-            mpi: mpich3
-            image: ncarcisl/cisldev-x86_64-almalinux9-nvhpc-mpich3:devel
-            mpi-impl: mpich
-          - compiler: nvhpc
-            mpi: openmpi
-            image: ncarcisl/cisldev-x86_64-almalinux9-nvhpc-openmpi:devel
-            mpi-impl: openmpi
-          - compiler: oneapi
-            mpi: mpich3
-            image: ncarcisl/cisldev-x86_64-almalinux9-oneapi-mpich3:devel
-            mpi-impl: mpich
-          - compiler: oneapi
-            mpi: openmpi
-            image: ncarcisl/cisldev-x86_64-almalinux9-oneapi-openmpi:devel
-            mpi-impl: openmpi
+        mpi: [mpich3, mpich, openmpi]
+        io: [smiol, pio]
 
-    name: Run ${{ matrix.num-procs }}proc (${{ matrix.compiler }}, ${{ matrix.mpi }})
+    name: Run ${{ matrix.num-procs }}proc (${{ matrix.compiler }}, ${{ matrix.mpi }}, ${{ matrix.io }})
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.image }}
+      image: docker.io/ncarcisl/cisldev-x86_64-almalinux9-${{ matrix.compiler }}-${{ matrix.mpi }}:devel
 
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +96,7 @@ jobs:
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
-          name: exe-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-smiol
+          name: exe-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-${{ matrix.io }}
 
       - name: Run MPAS-A
         if: steps.download.outcome == 'success'
@@ -129,15 +104,15 @@ jobs:
         with:
           executable: ./atmosphere_model
           num-procs: ${{ matrix.num-procs }}
-          mpi-impl: ${{ matrix.mpi-impl }}
-          working-dir: run-${{ matrix.num-procs }}proc-${{ matrix.compiler }}-${{ matrix.mpi }}
+          mpi-impl: ${{ matrix.mpi != 'openmpi' && 'mpich' || 'openmpi' }}
+          working-dir: run-${{ matrix.num-procs }}proc-${{ matrix.compiler }}-${{ matrix.mpi }}-${{ matrix.io }}
 
       - name: Upload logs
         uses: actions/upload-artifact@v4
         if: always() && steps.download.outcome == 'success'
         with:
-          name: logs-${{ matrix.num-procs }}proc-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-smiol
-          path: run-${{ matrix.num-procs }}proc-${{ matrix.compiler }}-${{ matrix.mpi }}/log.*
+          name: logs-${{ matrix.num-procs }}proc-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-${{ matrix.io }}
+          path: run-${{ matrix.num-procs }}proc-${{ matrix.compiler }}-${{ matrix.mpi }}-${{ matrix.io }}/log.*
           retention-days: 5
 
   #===========================================================================
@@ -164,19 +139,35 @@ jobs:
           pattern: logs-*
           path: logs
 
+      - name: Generate expected config lists
+        id: expected
+        shell: bash
+        run: |
+          COMPILERS=(gcc nvhpc oneapi)
+          MPIS=(mpich3 mpich openmpi)
+          IOS=(smiol pio)
+
+          REF_LIST=""
+          DECOMP_LIST=""
+          for compiler in "${COMPILERS[@]}"; do
+            for mpi in "${MPIS[@]}"; do
+              for io in "${IOS[@]}"; do
+                REF_LIST="${REF_LIST:+${REF_LIST},}logs-1proc-${compiler}-${mpi}-nogpu-${io}"
+                DECOMP_LIST="${DECOMP_LIST:+${DECOMP_LIST},}4proc vs 1proc: ${compiler}-${mpi}-nogpu-${io}"
+              done
+            done
+          done
+
+          echo "ref=${REF_LIST}" >> $GITHUB_OUTPUT
+          echo "decomp=${DECOMP_LIST}" >> $GITHUB_OUTPUT
+
       - name: Validate 1-proc logs against reference
         uses: ./.github/actions/validate-logs
         with:
           logs-path: logs
           log-filter: 1proc
           reference-log: .github/test-cases/240km/reference_log.atmosphere.0000.out
-          expected-configs: >-
-            logs-1proc-gcc-mpich3-nogpu-smiol,
-            logs-1proc-gcc-openmpi-nogpu-smiol,
-            logs-1proc-nvhpc-mpich3-nogpu-smiol,
-            logs-1proc-nvhpc-openmpi-nogpu-smiol,
-            logs-1proc-oneapi-mpich3-nogpu-smiol,
-            logs-1proc-oneapi-openmpi-nogpu-smiol
+          expected-configs: ${{ steps.expected.outputs.ref }}
 
       - name: Decomposition test — compare 4-proc logs against 1-proc logs
         shell: bash
@@ -186,13 +177,168 @@ jobs:
             --decomposition-test \
             --allow-missing \
             --summary-file "$GITHUB_STEP_SUMMARY" \
-            --expected "4proc vs 1proc: gcc-mpich3-nogpu-smiol,4proc vs 1proc: gcc-openmpi-nogpu-smiol,4proc vs 1proc: nvhpc-mpich3-nogpu-smiol,4proc vs 1proc: nvhpc-openmpi-nogpu-smiol,4proc vs 1proc: oneapi-mpich3-nogpu-smiol,4proc vs 1proc: oneapi-openmpi-nogpu-smiol"
+            --expected "${{ steps.expected.outputs.decomp }}"
+
+  #===========================================================================
+  # ECT RUN: 3 perturbed ensemble members per matrix combination (120km)
+  #===========================================================================
+  ect-run:
+    needs: build
+    if: always() && needs.build.result != 'cancelled'
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, nvhpc, oneapi]
+        mpi: [mpich3, mpich, openmpi]
+        io: [smiol, pio]
+        num-procs: [1, 4]
+
+    name: ECT ${{ matrix.num-procs }}proc (${{ matrix.compiler }}, ${{ matrix.mpi }}, ${{ matrix.io }})
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/ncarcisl/cisldev-x86_64-almalinux9-${{ matrix.compiler }}-${{ matrix.mpi }}:devel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download executable
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: exe-${{ matrix.compiler }}-${{ matrix.mpi }}-nogpu-${{ matrix.io }}
+
+      - name: Download test case
+        if: steps.download.outcome == 'success'
+        uses: ./.github/actions/download-testdata
+        with:
+          test-case: ect-120km
+          dest-dir: base-case
+
+      - name: Download spin-up restart
+        if: steps.download.outcome == 'success'
+        id: restart
+        shell: bash
+        run: |
+          source .github/test-cases/ect-120km/config.env
+          RESTART="${ECT_SUMMARY_PREFIX}_restart.nc"
+          echo "Downloading ${RESTART} from ${DATA_REPO}..."
+          HTTP_CODE=$(curl -sL --retry 5 --retry-delay 5 -w "%{http_code}" \
+            "https://github.com/${DATA_REPO}/raw/main/${RESTART}" \
+            -o "${RESTART}")
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "Downloaded restart: $(du -h ${RESTART})"
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "file=${RESTART}" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Spin-up restart not available (HTTP ${HTTP_CODE}), running from cold-start init.nc"
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run perturbed MPAS-A
+        if: steps.download.outcome == 'success'
+        uses: ./.github/actions/run-perturb-mpas
+        with:
+          base-dir: base-case
+          executable: ./atmosphere_model
+          member-start: '0'
+          member-end: '2'
+          num-ranks: ${{ matrix.num-procs }}
+          mpi-impl: ${{ matrix.mpi != 'openmpi' && 'mpich' || 'openmpi' }}
+          restart-file: ${{ steps.restart.outputs.available == 'true' && steps.restart.outputs.file || '' }}
+
+      - name: Upload history files
+        uses: actions/upload-artifact@v4
+        if: always() && steps.download.outcome == 'success'
+        with:
+          name: ect-history-${{ matrix.compiler }}-${{ matrix.mpi }}-${{ matrix.io }}-${{ matrix.num-procs }}proc
+          path: history-output/history.*.nc
+          retention-days: 1
+
+  #===========================================================================
+  # ECT VALIDATE: PyCECT validation per matrix combination
+  #===========================================================================
+  ect-validate:
+    needs: ect-run
+    if: always() && needs.ect-run.result != 'cancelled'
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, nvhpc, oneapi]
+        mpi: [mpich3, mpich, openmpi]
+        io: [smiol, pio]
+        num-procs: [1, 4]
+
+    name: ECT Validate ${{ matrix.num-procs }}proc (${{ matrix.compiler }}, ${{ matrix.mpi }}, ${{ matrix.io }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download history files
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ect-history-${{ matrix.compiler }}-${{ matrix.mpi }}-${{ matrix.io }}-${{ matrix.num-procs }}proc
+          path: ect-test-files
+
+      - name: Run ECT validation
+        if: steps.download.outcome == 'success'
+        uses: ./.github/actions/validate-ect
+        with:
+          history-dir: ect-test-files
+          label: ${{ matrix.compiler }}/${{ matrix.mpi }}/${{ matrix.io }}/${{ matrix.num-procs }}proc
+          dimensions: |
+            compiler=${{ matrix.compiler }}
+            mpi=${{ matrix.mpi }}
+            io=${{ matrix.io }}
+            ranks=${{ matrix.num-procs }}proc
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ect-result-${{ matrix.compiler }}-${{ matrix.mpi }}-${{ matrix.io }}-${{ matrix.num-procs }}proc
+          path: ect-result.txt
+          retention-days: 1
+
+  #===========================================================================
+  # ECT SUMMARY: Consolidated ECT results table
+  #===========================================================================
+  ect-summary:
+    needs: ect-validate
+    if: always()
+    runs-on: ubuntu-latest
+    name: ECT Summary
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+
+      - name: Download all ECT results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ect-result-*
+          path: ect-results
+
+      - name: Generate summary
+        uses: ./.github/actions/ect-summary
+        with:
+          results-path: ect-results
 
   #===========================================================================
   # CLEANUP: Remove executable artifacts
   #===========================================================================
   cleanup:
-    needs: [run, validate]
+    needs: [run, validate, ect-run, ect-validate, ect-summary]
     if: always()
     runs-on: ubuntu-latest
     name: Cleanup
@@ -201,5 +347,7 @@ jobs:
       - name: Delete executable artifacts
         uses: geekyeggo/delete-artifact@v5
         with:
-          name: exe-*
+          name: |
+            exe-*
+            ect-history-*
           failOnError: false

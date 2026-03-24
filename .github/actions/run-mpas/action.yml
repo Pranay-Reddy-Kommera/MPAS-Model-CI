@@ -38,6 +38,10 @@ inputs:
     description: 'Working directory name for the run'
     required: false
     default: ''
+  strict-exit-check:
+    description: 'Fail on non-zero exit code (default true). Set false when gfortran IEEE warnings produce non-zero exit but model output is valid.'
+    required: false
+    default: 'true'
 
 outputs:
   log-dir:
@@ -63,6 +67,10 @@ runs:
         TIMEOUT="20"
         
         # Load from config.env if it exists
+        # Note: save RESOLUTION first — config.env may define its own
+        # RESOLUTION (e.g. "120km") which would clobber the input
+        # value (e.g. "ect-120km") used for directory naming.
+        INPUT_RESOLUTION="${RESOLUTION}"
         if [ -f "${CONFIG_FILE}" ]; then
           echo "Loading config from ${CONFIG_FILE}"
           source "${CONFIG_FILE}"
@@ -70,6 +78,7 @@ runs:
           RESTART="${RESTART_INTERVAL:-${RESTART}}"
           TIMEOUT="${RUN_TIMEOUT:-${TIMEOUT}}"
         fi
+        RESOLUTION="${INPUT_RESOLUTION}"
         
         # Apply explicit overrides from action inputs
         if [ -n "${{ inputs.run-duration }}" ]; then
@@ -144,6 +153,14 @@ runs:
           source /container/config_env.sh
         fi
         
+        # Workaround: some container images (e.g. mpich-cuda) omit LD_LIBRARY_PATH
+        # from config_env.sh, preventing the NVHPC runtime from finding libcuda.so
+        # injected by the Kubernetes NVIDIA device plugin. Remove once the MPICH-CUDA
+        # container images are fixed upstream.
+        if [ -z "${LD_LIBRARY_PATH}" ]; then
+          export LD_LIBRARY_PATH="/usr/lib64:/usr/lib"
+        fi
+        
         # Set MPI implementation
         if [ -n "${{ inputs.mpi-impl }}" ]; then
           export MPI_IMPL="${{ inputs.mpi-impl }}"
@@ -153,6 +170,12 @@ runs:
         MPI_FLAGS=""
         if [ "${MPI_IMPL}" = "openmpi" ]; then
           MPI_FLAGS="--allow-run-as-root --oversubscribe"
+        elif [ "${MPI_IMPL}" = "mpich" ]; then
+          # Prevent yaksa from trying to initialize CUDA when only stub
+          # libraries are present. OpenACC GPU computation is unaffected.
+          # See: https://github.com/pmodels/mpich/issues/6523
+          export MPICH_GPU_SUPPORT_ENABLED=0
+          export MPIR_CVAR_ENABLE_GPU=0
         fi
         
         # Set unlimited stack size
@@ -180,6 +203,9 @@ runs:
         echo "run-exit-code=${RUN_STATUS}" >> $GITHUB_OUTPUT
         if [ $RUN_STATUS -eq 0 ]; then
           echo "status=success" >> $GITHUB_OUTPUT
+        elif [ "${{ inputs.strict-exit-check }}" = "false" ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "::warning::Model exited with status ${RUN_STATUS} (non-strict mode, treating as success)"
         else
           echo "status=failed" >> $GITHUB_OUTPUT
           echo "::warning::Model run exited with status $RUN_STATUS"
