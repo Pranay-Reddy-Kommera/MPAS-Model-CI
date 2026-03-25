@@ -182,6 +182,7 @@ jobs:
           key: ect-spinup-restart-${{ github.sha }}
 
       - name: Push restart to mpas-ci-data
+        continue-on-error: true
         env:
           CI_DATA_TOKEN: ${{ secrets.MPAS_CI_DATA_TOKEN }}
         run: |
@@ -194,6 +195,7 @@ jobs:
           RESTART_FILE="${ECT_SUMMARY_PREFIX}_restart.nc"
           DATA_REPO="${DATA_REPO:-NCAR/mpas-ci-data}"
 
+          git lfs install
           git clone --depth 1 "https://x-access-token:${CI_DATA_TOKEN}@github.com/${DATA_REPO}.git" ci-data
           cp spinup-restart.nc "ci-data/${RESTART_FILE}"
 
@@ -201,7 +203,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add "${RESTART_FILE}"
+          git lfs track "*.nc"
+          git add .gitattributes "${RESTART_FILE}"
           if git diff --cached --quiet; then
             echo "Restart file unchanged — skipping push."
           else
@@ -451,6 +454,7 @@ jobs:
           TSLICE="${{ steps.meta.outputs.tslice }}"
           CURRENT_FILE="${SUMMARY_PREFIX}.nc"
 
+          git lfs install
           git clone --depth 1 "https://x-access-token:${CI_DATA_TOKEN}@github.com/${DATA_REPO}.git" ci-data
 
           # Archive versioned copy
