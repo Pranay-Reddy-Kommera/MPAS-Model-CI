@@ -186,10 +186,10 @@ jobs:
             HTTP_CODE="000"
           fi
           if [ "${HTTP_CODE}" = "200" ]; then
-            echo "available=true" >> $GITHUB_OUTPUT
+            echo "available=true" >> "${GITHUB_OUTPUT}"
           else
             echo "::warning::Spin-up restart not in ${DATA_REPO} (HTTP ${HTTP_CODE}). Cold-start runs cannot be validated against spinup-based ensemble summary. Run ect-ensemble-gen.yml to generate the restart file."
-            echo "available=false" >> $GITHUB_OUTPUT
+            echo "available=false" >> "${GITHUB_OUTPUT}"
           fi
 
       - uses: actions/setup-python@v5
