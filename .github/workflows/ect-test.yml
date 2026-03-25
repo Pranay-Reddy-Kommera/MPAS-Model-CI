@@ -177,8 +177,14 @@ jobs:
         run: |
           source .github/test-cases/ect-120km/config.env
           RESTART="${ECT_SUMMARY_PREFIX}_restart.nc"
+          set +e
           HTTP_CODE=$(curl -sIL --retry 3 --retry-delay 5 -w "%{http_code}" -o /dev/null \
             "https://github.com/${DATA_REPO}/raw/main/${RESTART}")
+          CURL_EXIT_CODE=$?
+          set -e
+          if [ "${CURL_EXIT_CODE}" -ne 0 ]; then
+            HTTP_CODE="000"
+          fi
           if [ "${HTTP_CODE}" = "200" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
           else
