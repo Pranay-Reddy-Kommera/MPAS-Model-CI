@@ -171,11 +171,28 @@ jobs:
         with:
           sparse-checkout: .github
 
+      - name: Check restart availability
+        id: check-restart
+        shell: bash
+        run: |
+          source .github/test-cases/ect-120km/config.env
+          RESTART="${ECT_SUMMARY_PREFIX}_restart.nc"
+          HTTP_CODE=$(curl -sIL --retry 3 --retry-delay 5 -w "%{http_code}" -o /dev/null \
+            "https://github.com/${DATA_REPO}/raw/main/${RESTART}")
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Spin-up restart not in ${DATA_REPO} (HTTP ${HTTP_CODE}). Cold-start runs cannot be validated against spinup-based ensemble summary. Run ect-ensemble-gen.yml to generate the restart file."
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/setup-python@v5
+        if: steps.check-restart.outputs.available == 'true'
         with:
           python-version: '3.11'
 
       - name: Download history files
+        if: steps.check-restart.outputs.available == 'true'
         uses: actions/download-artifact@v4
         with:
           pattern: ect-history-*
@@ -183,6 +200,7 @@ jobs:
           merge-multiple: true
 
       - name: Run ECT validation
+        if: steps.check-restart.outputs.available == 'true'
         uses: ./.github/actions/validate-ect
         with:
           history-dir: ect-test-files
