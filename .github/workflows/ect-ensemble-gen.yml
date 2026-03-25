@@ -201,10 +201,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git diff --quiet "${RESTART_FILE}" 2>/dev/null; then
+          git add "${RESTART_FILE}"
+          if git diff --cached --quiet; then
             echo "Restart file unchanged — skipping push."
           else
-            git add "${RESTART_FILE}"
             git commit -m "Update spin-up restart: ${RESTART_FILE}
 
           Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
