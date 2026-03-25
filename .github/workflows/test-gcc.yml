@@ -58,14 +58,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download executable
-        id: download
         uses: actions/download-artifact@v4
-        continue-on-error: true
         with:
           name: exe-gcc-${{ matrix.mpi }}-smiol
 
       - name: Run MPAS-A
-        if: steps.download.outcome == 'success'
         uses: ./.github/actions/run-mpas
         with:
           executable: ./atmosphere_model
@@ -75,7 +72,7 @@ jobs:
 
       - name: Upload logs
         uses: actions/upload-artifact@v4
-        if: always() && steps.download.outcome == 'success'
+        if: always()
         with:
           name: logs-1proc-gcc-${{ matrix.mpi }}-nogpu-smiol
           path: run-gcc-${{ matrix.mpi }}-smiol/log.*
@@ -108,6 +105,7 @@ jobs:
           logs-path: logs
           log-filter: 1proc
           reference-log: .github/test-cases/240km/reference_log.atmosphere.0000.out
+          allow-missing: 'false'
           expected-configs: >-
             logs-1proc-gcc-openmpi-nogpu-smiol,
             logs-1proc-gcc-mpich3-nogpu-smiol
