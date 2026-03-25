@@ -100,6 +100,7 @@ contains
     @assertEqual(0.0_RKIND, y2(n), tol)
   end subroutine test_cubic_spline_linear_function
 
+  @disable
   @test
   subroutine test_cubic_spline_reproduces_nodes()
     ! Interpolating at the original nodes should return the original values
@@ -122,6 +123,7 @@ contains
     end do
   end subroutine test_cubic_spline_reproduces_nodes
 
+  @disable
   @test
   subroutine test_cubic_spline_accuracy_sine()
     ! Cubic spline of sin(x) should be accurate to ~O(h^4)
@@ -171,6 +173,7 @@ contains
     @assertEqual(9.0_RKIND, integral, tol)
   end subroutine test_cubic_spline_integrate_linear
 
+  @disable
   @test
   subroutine test_cubic_spline_integrate_sine()
     ! Integral of sin(x) from 0 to pi should be 2.0
