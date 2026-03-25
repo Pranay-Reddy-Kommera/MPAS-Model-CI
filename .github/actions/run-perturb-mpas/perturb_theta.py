@@ -30,6 +30,7 @@ def perturb_theta(ic_file, seed, magnitude=1e-14):
 
         theta = ds.variables["theta"]
         data = theta[:]
+        original_mean = float(np.mean(data))
 
         perturbation = rng.uniform(-magnitude, magnitude, size=data.shape)
         theta[:] = data * (1.0 + perturbation)
@@ -37,10 +38,27 @@ def perturb_theta(ic_file, seed, magnitude=1e-14):
         actual_max = np.max(np.abs(perturbation))
         print(f"Applied perturbation to theta field:")
         print(f"  File:      {ic_file}")
+        print(f"  Format:    {ds.data_model}")
         print(f"  Seed:      {seed}")
         print(f"  Magnitude: +/- {magnitude:.0e}")
         print(f"  Max |eps|: {actual_max:.2e}")
         print(f"  Shape:     {data.shape}")
+        print(f"  Var dtype: {theta.dtype}")
+        print(f"  Original mean: {original_mean:.15e}")
+
+    # Read-back verification: reopen and confirm perturbation persisted
+    with Dataset(ic_file, "r") as ds:
+        verify = ds.variables["theta"][:]
+        verify_mean = float(np.mean(verify))
+        diff = verify.astype(np.float64) - data.astype(np.float64)
+        n_changed = int(np.count_nonzero(diff))
+        max_diff = float(np.max(np.abs(diff)))
+        print(f"  Verify mean:   {verify_mean:.15e}")
+        print(f"  Changed cells: {n_changed}/{diff.size}")
+        print(f"  Max |diff|:    {max_diff:.6e}")
+        if n_changed == 0:
+            print("ERROR: Perturbation did NOT persist in file!")
+            sys.exit(1)
 
 
 def main():
