@@ -186,8 +186,8 @@ runs:
           echo "[$(date +%H:%M:%S)] === Output stream ==="
           grep -A2 'stream name="output"' streams.atmosphere || true
 
-          # Diagnostic: verify the restart file theta right before model reads it
-          echo "[$(date +%H:%M:%S)] === Pre-run restart theta check ==="
+          # Diagnostic: verify theta in the restart file the model just consumed
+          echo "[$(date +%H:%M:%S)] === Restart theta check ==="
           RESTART_NC=$(ls restart.*.nc 2>/dev/null | head -1)
           if [ -n "${RESTART_NC}" ]; then
             python3 -c "

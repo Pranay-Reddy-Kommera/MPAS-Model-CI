@@ -57,7 +57,9 @@ def perturb_theta(ic_file, seed, magnitude=1e-14):
         print(f"  Changed cells: {n_changed}/{diff.size}")
         print(f"  Max |diff|:    {max_diff:.6e}")
         if n_changed == 0:
-            print("ERROR: Perturbation did NOT persist in file!")
+            print(f"ERROR: Perturbation did NOT persist in file!")
+            print(f"  On-disk dtype: {ds.variables['theta'].dtype}")
+            print(f"  If dtype is float32, perturbations below ~1.2e-7 will be rounded away.")
             sys.exit(1)
 
 
