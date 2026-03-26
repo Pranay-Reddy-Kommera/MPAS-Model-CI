@@ -187,13 +187,13 @@ runs:
           RESTART_NC=$(ls restart.*.nc 2>/dev/null | head -1)
           if [ -n "${RESTART_NC}" ]; then
             python3 -c "
-import netCDF4 as nc, numpy as np, sys
-ds = nc.Dataset(sys.argv[1])
-th = ds.variables['theta'][:]
-print(f'  File: {sys.argv[1]}')
-print(f'  theta dtype={th.dtype} shape={th.shape} mean={np.mean(th):.15e}')
-ds.close()
-" "${RESTART_NC}"
+        import netCDF4 as nc, numpy as np, sys
+        ds = nc.Dataset(sys.argv[1])
+        th = ds.variables['theta'][:]
+        print(f'  File: {sys.argv[1]}')
+        print(f'  theta dtype={th.dtype} shape={th.shape} mean={np.mean(th):.15e}')
+        ds.close()
+        " "${RESTART_NC}"
           fi
 
           # Check for history file as the real success indicator
@@ -204,17 +204,17 @@ ds.close()
             # Diagnostic: theta stats from history output
             echo "[$(date +%H:%M:%S)] === History theta check ==="
             python3 -c "
-import netCDF4 as nc, numpy as np, sys
-ds = nc.Dataset(sys.argv[1])
-if 'theta' in ds.variables:
-    th = ds.variables['theta']
-    data = th[:]
-    print(f'  theta dtype={data.dtype} shape={data.shape} mean={np.mean(data):.15e} min={np.min(data):.10e} max={np.max(data):.10e}')
-else:
-    print('  theta NOT in history variables')
-    print(f'  Available: {list(ds.variables.keys())[:15]}...')
-ds.close()
-" "${HIST_FILE}"
+        import netCDF4 as nc, numpy as np, sys
+        ds = nc.Dataset(sys.argv[1])
+        if 'theta' in ds.variables:
+            th = ds.variables['theta']
+            data = th[:]
+            print(f'  theta dtype={data.dtype} shape={data.shape} mean={np.mean(data):.15e} min={np.min(data):.10e} max={np.max(data):.10e}')
+        else:
+            print('  theta NOT in history variables')
+            print(f'  Available: {list(ds.variables.keys())[:15]}...')
+        ds.close()
+        " "${HIST_FILE}"
             TSLICE=$(python3 -c "
         import netCDF4, sys
         ds = netCDF4.Dataset(sys.argv[1])
