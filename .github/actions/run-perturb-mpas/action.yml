@@ -146,12 +146,19 @@ runs:
           python3 ${GITHUB_WORKSPACE}/.github/actions/run-perturb-mpas/perturb_theta.py \
             "${PERTURB_FILE}" --seed ${MEMBER} --magnitude ${ECT_PERTURB_MAGNITUDE}
 
+          # Fingerprint: confirm each member's restart is unique on disk
+          echo "  Restart MD5: $(md5sum "${PERTURB_FILE}" | cut -d' ' -f1)"
+
           # Configure namelist and streams
           cd "${RUNDIR}"
 
           if [ -n "${RESTART_FILE}" ]; then
             sed -i "s/config_do_restart.*/config_do_restart = .true./" namelist.atmosphere
             sed -i "s/config_start_time.*/config_start_time = 'file'/" namelist.atmosphere
+            # Recompute coupled fields (theta_m, rho_zz, rho*u, etc.) from
+            # the uncoupled fields so that our perturbation to theta propagates
+            # into the prognostic theta_m used by the dynamics.
+            sed -i '/&restart/a\    config_do_DAcycling = .true.' namelist.atmosphere
           fi
 
           sed -i "s/config_run_duration = '[^']*'/config_run_duration = '${RUN_DURATION}'/" namelist.atmosphere
@@ -171,11 +178,47 @@ runs:
             [ -f "${LOGFILE}" ] && cp "${LOGFILE}" "../${OUTDIR}/${LOGFILE%.out}.member${MEMBER_ID}.out"
           done
 
+          # Diagnostic: dump namelist/streams config MPAS actually used
+          echo "[$(date +%H:%M:%S)] === Namelist config ==="
+          grep -E 'config_do_restart|config_start_time|config_run_duration' namelist.atmosphere || true
+          echo "[$(date +%H:%M:%S)] === Restart stream ==="
+          grep -A2 'immutable_stream name="restart"' streams.atmosphere || true
+          echo "[$(date +%H:%M:%S)] === Output stream ==="
+          grep -A2 'stream name="output"' streams.atmosphere || true
+
+          # Diagnostic: verify theta in the restart file the model just consumed
+          echo "[$(date +%H:%M:%S)] === Restart theta check ==="
+          RESTART_NC=$(ls restart.*.nc 2>/dev/null | head -1)
+          if [ -n "${RESTART_NC}" ]; then
+            python3 -c "
+        import netCDF4 as nc, numpy as np, sys
+        ds = nc.Dataset(sys.argv[1])
+        th = ds.variables['theta'][:]
+        print(f'  File: {sys.argv[1]}')
+        print(f'  theta dtype={th.dtype} shape={th.shape} mean={np.mean(th):.15e}')
+        ds.close()
+        " "${RESTART_NC}"
+          fi
+
           # Check for history file as the real success indicator
           echo "[$(date +%H:%M:%S)] History files produced:"
           ls -la history.*.nc 2>/dev/null || echo "  (none)"
           HIST_FILE=$(ls -t history.*.nc 2>/dev/null | head -1 || true)
           if [ -n "${HIST_FILE}" ]; then
+            # Diagnostic: theta stats from history output
+            echo "[$(date +%H:%M:%S)] === History theta check ==="
+            python3 -c "
+        import netCDF4 as nc, numpy as np, sys
+        ds = nc.Dataset(sys.argv[1])
+        if 'theta' in ds.variables:
+            th = ds.variables['theta']
+            data = th[:]
+            print(f'  theta dtype={data.dtype} shape={data.shape} mean={np.mean(data):.15e} min={np.min(data):.10e} max={np.max(data):.10e}')
+        else:
+            print('  theta NOT in history variables')
+            print(f'  Available: {list(ds.variables.keys())[:15]}...')
+        ds.close()
+        " "${HIST_FILE}"
             TSLICE=$(python3 -c "
         import netCDF4, sys
         ds = netCDF4.Dataset(sys.argv[1])
