@@ -137,15 +137,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore cached restart
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: spinup-restart.nc
+          key: ect-spinup-restart
+
       - name: Download executable
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v4
         with:
           name: exe-ect-ensemble
 
       - name: Make executable
+        if: steps.cache.outputs.cache-hit != 'true'
         run: chmod +x atmosphere_model
 
       - name: Run 24h spin-up
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/run-mpas
         with:
           executable: ./atmosphere_model
@@ -157,7 +167,8 @@ jobs:
           run-timeout: '350'
           strict-exit-check: 'false'
 
-      - name: Verify and upload restart file
+      - name: Verify restart file
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           RESTART=$(ls run-ect-120km/restart.*.nc 2>/dev/null | head -1)
           if [ -z "${RESTART}" ]; then
@@ -168,6 +179,13 @@ jobs:
           echo "Spin-up restart: ${RESTART} ($(du -h ${RESTART} | cut -f1))"
           cp "${RESTART}" spinup-restart.nc
 
+      - name: Cache restart file
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: spinup-restart.nc
+          key: ect-spinup-restart
+
       - name: Upload restart artifact
         uses: actions/upload-artifact@v4
         with:
@@ -175,13 +193,8 @@ jobs:
           path: spinup-restart.nc
           retention-days: 1
 
-      - name: Cache restart file
-        uses: actions/cache/save@v4
-        with:
-          path: spinup-restart.nc
-          key: ect-spinup-restart-${{ github.sha }}
-
       - name: Push restart to mpas-ci-data
+        if: steps.cache.outputs.cache-hit != 'true'
         continue-on-error: true
         env:
           CI_DATA_TOKEN: ${{ secrets.MPAS_CI_DATA_TOKEN }}
