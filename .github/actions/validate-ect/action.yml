@@ -83,6 +83,7 @@ runs:
           --tslice ${{ steps.summary.outputs.tslice }} \
           --mpas \
           --verbose \
+          --printStdMean \
           2>&1 | tee pycect_output.txt
         PYCECT_STATUS=$?
         set -e
