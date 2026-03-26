@@ -115,6 +115,7 @@ jobs:
         id: version
         run: |
           VERSION=$(grep -oP '<registry.*version="\K[^"]+' src/core_atmosphere/Registry.xml || echo "unknown")
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
           COMMIT=$(git rev-parse --short=8 HEAD)
           echo "mpas-version=${VERSION}" >> $GITHUB_OUTPUT
           echo "mpas-commit=${COMMIT}" >> $GITHUB_OUTPUT
