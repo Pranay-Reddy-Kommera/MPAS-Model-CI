@@ -87,6 +87,9 @@ jobs:
   build:
     name: Build MPAS-A (${{ inputs.compiler || 'nvhpc' }}/${{ inputs.mpi-impl || 'mpich' }})
     runs-on: ubuntu-latest
+    outputs:
+      mpas-version: ${{ steps.version.outputs.mpas-version }}
+      mpas-commit: ${{ steps.version.outputs.mpas-commit }}
     container:
       image: docker.io/ncarcisl/cisldev-x86_64-almalinux9-${{ inputs.compiler || 'nvhpc' }}-${{ inputs.mpi-impl || 'mpich' }}:devel
 
@@ -107,6 +110,14 @@ jobs:
         if: ${{ inputs.mpas-repository != '' }}
         shell: bash
         run: cp -r _ci/.github . && rm -rf _ci
+
+      - name: Extract MPAS version
+        id: version
+        run: |
+          VERSION=$(grep -oP '<registry.*version="\K[^"]+' src/core_atmosphere/Registry.xml || echo "unknown")
+          COMMIT=$(git rev-parse --short=8 HEAD)
+          echo "mpas-version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "mpas-commit=${COMMIT}" >> $GITHUB_OUTPUT
 
       - name: Build MPAS-A (double precision)
         uses: ./.github/actions/build-mpas
@@ -193,41 +204,6 @@ jobs:
           path: spinup-restart.nc
           retention-days: 1
 
-      - name: Push restart to mpas-ci-data
-        if: steps.cache.outputs.cache-hit != 'true'
-        continue-on-error: true
-        env:
-          CI_DATA_TOKEN: ${{ secrets.MPAS_CI_DATA_TOKEN }}
-        run: |
-          if [ -z "${CI_DATA_TOKEN}" ]; then
-            echo "::warning::MPAS_CI_DATA_TOKEN not set — skipping restart upload to mpas-ci-data."
-            exit 0
-          fi
-
-          source .github/test-cases/ect-120km/config.env
-          RESTART_FILE="${ECT_SUMMARY_PREFIX}_restart.nc"
-          DATA_REPO="${DATA_REPO:-NCAR/mpas-ci-data}"
-
-          git lfs install
-          git clone --depth 1 "https://x-access-token:${CI_DATA_TOKEN}@github.com/${DATA_REPO}.git" ci-data
-          cp spinup-restart.nc "ci-data/${RESTART_FILE}"
-
-          cd ci-data
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git lfs track "*.nc"
-          git add .gitattributes "${RESTART_FILE}"
-          if git diff --cached --quiet; then
-            echo "Restart file unchanged — skipping push."
-          else
-            git commit -m "Update spin-up restart: ${RESTART_FILE}
-
-          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-            git push
-            echo "Pushed ${RESTART_FILE} to ${DATA_REPO}"
-          fi
-
   #===========================================================================
   # RUN: Batched ensemble members
   #===========================================================================
@@ -285,36 +261,37 @@ jobs:
 
   #===========================================================================
   # SUMMARY: Generate ensemble summary file with pyEnsSumMPAS
+  # Security: This job only checks out THIS repo (for config/tooling).
+  # The MPAS version and commit come from the build job outputs, so no
+  # external repo code is checked out or executed here.
   #===========================================================================
   generate-summary:
-    needs: [prepare, run-ensemble]
+    needs: [prepare, build, run-ensemble]
     if: always() && needs.run-ensemble.result != 'cancelled'
     name: Generate Summary
     runs-on: ubuntu-latest
+    outputs:
+      summary-name: ${{ steps.meta.outputs.summary-name }}
+      summary-prefix: ${{ steps.meta.outputs.summary-prefix }}
+      mpas-version: ${{ steps.meta.outputs.mpas-version }}
+      mpas-repo: ${{ steps.meta.outputs.mpas-repo }}
+      branch: ${{ steps.meta.outputs.branch }}
+      commit: ${{ steps.meta.outputs.commit }}
+      date: ${{ steps.meta.outputs.date }}
+      resolution: ${{ steps.meta.outputs.resolution }}
+      ensemble-size: ${{ steps.meta.outputs.ensemble-size }}
+      tslice: ${{ steps.meta.outputs.tslice }}
+      compiler: ${{ steps.meta.outputs.compiler }}
+      mpi-impl: ${{ steps.meta.outputs.mpi-impl }}
+      precision: ${{ steps.meta.outputs.precision }}
+      run-duration: ${{ steps.meta.outputs.run-duration }}
+      perturb-magnitude: ${{ steps.meta.outputs.perturb-magnitude }}
+      perturb-variable: ${{ steps.meta.outputs.perturb-variable }}
 
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.mpas-repository || github.repository }}
-          ref: ${{ inputs.mpas-ref || '' }}
-          sparse-checkout: |
-            src/core_atmosphere/Registry.xml
-            .github/test-cases/ect-120km/config.env
-          path: mpas-source
-
-      - uses: actions/checkout@v4
-        if: ${{ inputs.mpas-repository != '' }}
-        with:
           sparse-checkout: .github/test-cases/ect-120km
-          path: _ci-config
-
-      - name: Overlay CI config
-        if: ${{ inputs.mpas-repository != '' }}
-        shell: bash
-        run: |
-          mkdir -p mpas-source/.github/test-cases
-          cp -r _ci-config/.github/test-cases/ect-120km mpas-source/.github/test-cases/
-          rm -rf _ci-config
 
       - uses: actions/setup-python@v5
         with:
@@ -323,15 +300,14 @@ jobs:
       - name: Collect metadata
         id: meta
         run: |
-          source mpas-source/.github/test-cases/ect-120km/config.env
-          VERSION=$(grep -oP '<registry.*version="\K[^"]+' mpas-source/src/core_atmosphere/Registry.xml || echo "unknown")
+          source .github/test-cases/ect-120km/config.env
+          VERSION="${{ needs.build.outputs.mpas-version }}"
           DATE=$(date -u +%Y-%m-%d)
           SUMMARY_NAME="${ECT_SUMMARY_PREFIX}_v${VERSION}_${DATE//-/}.nc"
 
-          # Use the actual MPAS source repo/ref, not the workflow trigger context
           MPAS_REPO="${{ inputs.mpas-repository || github.repository }}"
           MPAS_BRANCH="${{ inputs.mpas-ref || github.ref_name }}"
-          MPAS_COMMIT=$(git -C mpas-source rev-parse --short=8 HEAD)
+          MPAS_COMMIT="${{ needs.build.outputs.mpas-commit }}"
 
           echo "mpas-version=${VERSION}" >> $GITHUB_OUTPUT
           echo "mpas-repo=${MPAS_REPO}" >> $GITHUB_OUTPUT
@@ -369,7 +345,7 @@ jobs:
 
       - name: Clone PyCECT
         run: |
-          source mpas-source/.github/test-cases/ect-120km/config.env
+          source .github/test-cases/ect-120km/config.env
           git clone --depth 1 --branch "${PYCECT_TAG}" https://github.com/NCAR/PyCECT.git pycect
 
       - name: Download all history files
@@ -410,11 +386,8 @@ jobs:
             ESIZE=${NFILES}
           fi
 
-          # PyCECT writes auto-detected exclusions to NEW.<jsonfile>.
-          # The file must be in the working directory — a subdirectory path
-          # like pycect/foo.json produces NEW.pycect/foo.json which fails.
           JSONFILE=ect_pycect_exclude.json
-          cp mpas-source/.github/test-cases/ect-120km/${JSONFILE} .
+          cp .github/test-cases/ect-120km/${JSONFILE} .
 
           python pycect/pyEnsSumMPAS.py \
             --esize ${ESIZE} \
@@ -444,8 +417,49 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
+      - name: Summary
+        if: always()
+        run: |
+          SUMMARY_NAME="${{ steps.meta.outputs.summary-name }}"
+          echo "=========================================="
+          echo "  ECT Ensemble Summary Generated"
+          echo "=========================================="
+          echo ""
+          echo "  MPAS repo:     ${{ steps.meta.outputs.mpas-repo }}"
+          echo "  MPAS version:  ${{ steps.meta.outputs.mpas-version }}"
+          echo "  Branch:        ${{ steps.meta.outputs.branch }}"
+          echo "  Commit:        ${{ steps.meta.outputs.commit }}"
+          echo "  Resolution:    ${{ steps.meta.outputs.resolution }}"
+          echo "  Compiler:      ${{ steps.meta.outputs.compiler }}/${{ steps.meta.outputs.mpi-impl }}"
+          echo "  Precision:     ${{ steps.meta.outputs.precision }}"
+          echo "  Duration:      ${{ steps.meta.outputs.run-duration }}"
+          echo "  Perturbation:  ${{ steps.meta.outputs.perturb-magnitude }} (${{ steps.meta.outputs.perturb-variable }})"
+          echo "  Ensemble size: ${{ steps.meta.outputs.ensemble-size }}"
+          echo "  Date:          ${{ steps.meta.outputs.date }}"
+          echo ""
+          if [ -f "${SUMMARY_NAME}" ]; then
+            echo "  File: ${SUMMARY_NAME}"
+            echo "  Size: $(du -h "${SUMMARY_NAME}" | cut -f1)"
+          fi
+
+  #===========================================================================
+  # PUBLISH: Push summary to mpas-ci-data (isolated from untrusted code)
+  # Security: This job NEVER checks out or executes external repository code.
+  # It only downloads the summary artifact and pushes it to mpas-ci-data.
+  #===========================================================================
+  publish-summary:
+    needs: generate-summary
+    if: needs.generate-summary.result == 'success'
+    name: Publish Summary
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download summary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mpas-ect-summary
+
       - name: Push summary to mpas-ci-data
-        if: success()
         env:
           CI_DATA_TOKEN: ${{ secrets.MPAS_CI_DATA_TOKEN }}
         run: |
@@ -455,40 +469,32 @@ jobs:
             exit 0
           fi
 
-          SUMMARY_NAME="${{ steps.meta.outputs.summary-name }}"
-          SUMMARY_PREFIX="${{ steps.meta.outputs.summary-prefix }}"
+          SUMMARY_NAME="${{ needs.generate-summary.outputs.summary-name }}"
+          SUMMARY_PREFIX="${{ needs.generate-summary.outputs.summary-prefix }}"
           DATA_REPO="NCAR/mpas-ci-data"
-          VERSION="${{ steps.meta.outputs.mpas-version }}"
-          BRANCH="${{ steps.meta.outputs.branch }}"
-          COMMIT="${{ steps.meta.outputs.commit }}"
-          DATE="${{ steps.meta.outputs.date }}"
-          ESIZE="${{ steps.meta.outputs.ensemble-size }}"
-          RESOLUTION="${{ steps.meta.outputs.resolution }}"
-          TSLICE="${{ steps.meta.outputs.tslice }}"
+          VERSION="${{ needs.generate-summary.outputs.mpas-version }}"
+          BRANCH="${{ needs.generate-summary.outputs.branch }}"
+          COMMIT="${{ needs.generate-summary.outputs.commit }}"
+          DATE="${{ needs.generate-summary.outputs.date }}"
+          ESIZE="${{ needs.generate-summary.outputs.ensemble-size }}"
+          RESOLUTION="${{ needs.generate-summary.outputs.resolution }}"
+          TSLICE="${{ needs.generate-summary.outputs.tslice }}"
           CURRENT_FILE="${SUMMARY_PREFIX}.nc"
-
-          git lfs install
-          git clone --depth 1 "https://x-access-token:${CI_DATA_TOKEN}@github.com/${DATA_REPO}.git" ci-data
-
-          # Archive versioned copy
-          mkdir -p ci-data/ect-summaries
-          cp "${SUMMARY_NAME}" "ci-data/ect-summaries/"
-
-          # Update current summary (this is what ect-test.yml downloads)
-          cp "${SUMMARY_NAME}" "ci-data/${CURRENT_FILE}"
-
-          # Restart file is already pushed by the spinup job; reference it in metadata
+          MPAS_REPO="${{ needs.generate-summary.outputs.mpas-repo }}"
+          COMPILER="${{ needs.generate-summary.outputs.compiler }}"
+          MPI_IMPL="${{ needs.generate-summary.outputs.mpi-impl }}"
+          PRECISION="${{ needs.generate-summary.outputs.precision }}"
+          RUN_DURATION="${{ needs.generate-summary.outputs.run-duration }}"
+          PERTURB_MAG="${{ needs.generate-summary.outputs.perturb-magnitude }}"
+          PERTURB_VAR="${{ needs.generate-summary.outputs.perturb-variable }}"
           RESTART_FILE="${SUMMARY_PREFIX}_restart.nc"
 
-          MPAS_REPO="${{ steps.meta.outputs.mpas-repo }}"
-          COMPILER="${{ steps.meta.outputs.compiler }}"
-          MPI_IMPL="${{ steps.meta.outputs.mpi-impl }}"
-          PRECISION="${{ steps.meta.outputs.precision }}"
-          RUN_DURATION="${{ steps.meta.outputs.run-duration }}"
-          PERTURB_MAG="${{ steps.meta.outputs.perturb-magnitude }}"
-          PERTURB_VAR="${{ steps.meta.outputs.perturb-variable }}"
+          git clone --depth 1 "https://x-access-token:${CI_DATA_TOKEN}@github.com/${DATA_REPO}.git" ci-data
 
-          # Write metadata for current summary
+          mkdir -p ci-data/ect-summaries
+          cp "${SUMMARY_NAME}" "ci-data/ect-summaries/"
+          cp "${SUMMARY_NAME}" "ci-data/${CURRENT_FILE}"
+
           python3 -c "
           import json
           json.dump({
@@ -543,36 +549,11 @@ jobs:
           echo "  Current:  ${CURRENT_FILE}"
           echo "  Archived: ect-summaries/${SUMMARY_NAME}"
 
-      - name: Summary
-        if: always()
-        run: |
-          SUMMARY_NAME="${{ steps.meta.outputs.summary-name }}"
-          echo "=========================================="
-          echo "  ECT Ensemble Summary Generated"
-          echo "=========================================="
-          echo ""
-          echo "  MPAS repo:     ${{ steps.meta.outputs.mpas-repo }}"
-          echo "  MPAS version:  ${{ steps.meta.outputs.mpas-version }}"
-          echo "  Branch:        ${{ steps.meta.outputs.branch }}"
-          echo "  Commit:        ${{ steps.meta.outputs.commit }}"
-          echo "  Resolution:    ${{ steps.meta.outputs.resolution }}"
-          echo "  Compiler:      ${{ steps.meta.outputs.compiler }}/${{ steps.meta.outputs.mpi-impl }}"
-          echo "  Precision:     ${{ steps.meta.outputs.precision }}"
-          echo "  Duration:      ${{ steps.meta.outputs.run-duration }}"
-          echo "  Perturbation:  ${{ steps.meta.outputs.perturb-magnitude }} (${{ steps.meta.outputs.perturb-variable }})"
-          echo "  Ensemble size: ${{ steps.meta.outputs.ensemble-size }}"
-          echo "  Date:          ${{ steps.meta.outputs.date }}"
-          echo ""
-          if [ -f "${SUMMARY_NAME}" ]; then
-            echo "  File: ${SUMMARY_NAME}"
-            echo "  Size: $(du -h "${SUMMARY_NAME}" | cut -f1)"
-          fi
-
   #===========================================================================
   # CLEANUP
   #===========================================================================
   cleanup:
-    needs: [run-ensemble, generate-summary]
+    needs: [run-ensemble, generate-summary, publish-summary]
     if: always()
     runs-on: ubuntu-latest
     name: Cleanup
