@@ -2,14 +2,16 @@
 # Builds and runs MPAS-A in both CUDA and NoGPU modes on CIRRUS
 # self-hosted runners with GPU access, then compares logs.
 #
+# Security: This workflow runs on self-hosted CIRRUS runners. Only trigger
+# via workflow_dispatch by trusted maintainers — never on pull_request,
+# which could allow fork PRs to execute arbitrary code on CIRRUS hardware.
+#
 # For full NVHPC GPU matrix, see test-cirrus-nvhpc.yml.
 
 name: "GPU (subset)"
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [master, develop]
 
 jobs:
   build:

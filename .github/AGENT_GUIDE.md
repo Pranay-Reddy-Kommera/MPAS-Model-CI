@@ -332,6 +332,14 @@ gh api repos/NCAR/MPAS-Model-CI/actions/runs/<run-id>/jobs
 
 GitHub only shows the workflow_dispatch trigger button for workflows defined on the **default branch** (master). When adding or modifying workflow_dispatch workflows on feature branches, the workflow file must also exist on master for the UI button to appear. Sync workflow files to master when needed.
 
+## Security: Workflow Triggers and Secrets
+
+**Self-hosted runner policy**: Workflows that run on self-hosted CIRRUS runners (`test-gpu.yml`, `test-cirrus-nvhpc.yml`) must only use `workflow_dispatch` triggers. Never add `pull_request` triggers to these workflows — fork PRs could execute arbitrary code on CIRRUS hardware.
+
+**Secret isolation**: The `MPAS_CI_DATA_TOKEN` secret (used to push to `NCAR/mpas-ci-data`) must never be available in jobs that check out or execute external repository code. In `ect-ensemble-gen.yml`, the `publish-summary` job is the only job with access to this secret, and it only downloads artifacts — it never checks out or runs code from any repository.
+
+**Cross-repo code execution**: When `workflow_dispatch` inputs specify an external repo (e.g., `MPAS-Dev/MPAS-Model`), the `build` job checks out that repo and runs `make`. A malicious Makefile could run arbitrary code. This is acceptable because `workflow_dispatch` can only be triggered by users with write access to MPAS-Model-CI, but secrets must still be kept out of jobs that execute external code.
+
 ## Test Data and Caching
 
 Test case archives are hosted in `NCAR/mpas-ci-data` and downloaded via `download-testdata`. The action uses `actions/cache@v4` with key `testdata-v1-{archive}` to cache archives across workflow runs, avoiding repeated large downloads.
