@@ -106,11 +106,12 @@ runs:
           exit 1
         fi
 
-    - name: Skip notice
+    - name: Fail if summary unavailable
       if: steps.summary.outputs.available != 'true'
       shell: bash
       run: |
-        echo "::notice::ECT validation skipped — ensemble summary file not yet available."
+        echo "::error::ECT validation cannot run — ensemble summary file not found in NCAR/mpas-ci-data. Run ect-ensemble-gen.yml first."
+        exit 1
 
     - name: Write result file
       id: outcome
