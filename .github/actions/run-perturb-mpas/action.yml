@@ -155,6 +155,10 @@ runs:
           if [ -n "${RESTART_FILE}" ]; then
             sed -i "s/config_do_restart.*/config_do_restart = .true./" namelist.atmosphere
             sed -i "s/config_start_time.*/config_start_time = 'file'/" namelist.atmosphere
+            # Recompute coupled fields (theta_m, rho_zz, rho*u, etc.) from
+            # the uncoupled fields so that our perturbation to theta propagates
+            # into the prognostic theta_m used by the dynamics.
+            sed -i '/&restart/a\    config_do_DAcycling = .true.' namelist.atmosphere
           fi
 
           sed -i "s/config_run_duration = '[^']*'/config_run_duration = '${RUN_DURATION}'/" namelist.atmosphere
