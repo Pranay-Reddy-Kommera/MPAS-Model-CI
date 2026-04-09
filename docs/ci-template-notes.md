@@ -12,9 +12,8 @@ This document describes what is **MPAS-specific** versus **portable** when copyi
 
 ## MPAS-specific pieces (replace when porting)
 
-- **`build-mpas`**, **`run-mpas`**, **`run-perturb-mpas`**, **`validate-ect`** — assume MPAS-A layout, `atmosphere_model`, namelist/streams, ECT/PyCECT.
-- **Test data** — GitHub releases on this repo (`testdata-*`, `ect-*`). Another model would use its own release layout and env variable names.
-- **BFB scripts** — `compare-bfb-nc.py`, single-precision 240km assumptions.
+- **`build-mpas`**, **`run-mpas`**, **`run-perturb-mpas`**, **`validate-ect`** — assume MPAS-A layout, `atmosphere_model`, namelist/streams, ECT/PyCECT
+
 
 ## Infrastructure you must supply
 
