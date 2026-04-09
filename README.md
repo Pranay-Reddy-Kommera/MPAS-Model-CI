@@ -19,16 +19,15 @@ Each test builds in double precision, runs 3 perturbed ensemble members (4 MPI r
 | NVHPC | MPICH | GPU | [![NVHPC+MPICH (GPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
 | NVHPC | OpenMPI | GPU | [![NVHPC+OpenMPI (GPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-openmpi.yml) | `hpcdev:almalinux9-nvhpc-openmpi-cuda-26.02` |
 
-GitHub-hosted runners have no GPU. **Compile-only** workflows verify the NVHPC + OpenACC + CUDA toolchain by building MPAS-A (no model run):
+\* Intel pinned to `hpcdev 25.09` (IFX 2025.2) to avoid an IFX 2025.3 preprocessor regression. This issue has been addressed by [MPAS-Dev:develop #1392](https://github.com/MPAS-Dev/MPAS-Model/pull/1392) 
+
+**Compile-only** workflows verify the NVHPC + OpenACC + CUDA toolchain by building on a Github Action runner without a GPU
+
 
 | Compiler | MPI | Target | Status | Container |
 |----------|-----|--------|--------|-----------|
 | NVHPC | MPICH | CUDA (compile) | [![NVHPC+MPICH+CUDA (compile-only)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
 
-\* Intel pinned to `hpcdev 25.09` (IFX 2025.2) to avoid an [IFX 2025.3 preprocessor regression](.github/ci-config.env).
-
-ECT subset container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
-Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-config.env`](.github/ci-config.env).
 
 ### Additional testing 
 
@@ -39,6 +38,9 @@ Bit-for-bit (BFB) workflows compare history output in single precision (240km ca
 | BFB: I/O (SMIOL vs PIO) | [![BFB: I/O (SMIOL vs PIO)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/bfb-io.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/bfb-io.yml) |
 | BFB: Decomposition (1 vs 4 ranks) | [![BFB: Decomposition (1 vs 4 ranks)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/bfb-decomp.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/bfb-decomp.yml) |
 | Code coverage | [![Code Coverage](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/coverage.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/coverage.yml) [![codecov](https://codecov.io/gh/NCAR/MPAS-Model-CI/graph/badge.svg)](https://codecov.io/gh/NCAR/MPAS-Model-CI) |
+
+Container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
+Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-config.env`](.github/ci-config.env).
 
 The Model for Prediction Across Scales (MPAS) is a collaborative project for
 developing atmosphere, ocean, and other earth-system simulation components for
