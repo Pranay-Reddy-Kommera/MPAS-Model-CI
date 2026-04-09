@@ -190,6 +190,121 @@ Key constraints:
 - **Time slice**: always extract last slice (`--tslice -1`) — slice 0 in cold-start mode is the unintegrated initial state.
 - ECT parameters and paths in `.github/ci-config.env` (`ECT_*`, `ECT_EXCLUDED_VARS`, `PYCECT_TAG`, release tags)
 
+### Running ECT without Docker (e.g. NCAR Derecho, Cheyenne)
+
+CI runs ECT inside **`hpcdev`** containers. You can reproduce the **same science checks** on an HPC login or compute node using your own compiler/MPI modules and the **scripts + config** from this repository—**no container required**. The composite action **`run-perturb-mpas`** sources `/container/config_env.sh` (not available on bare metal); follow the steps below instead of calling that action directly.
+
+**What you need**
+
+| Requirement | Matches CI (`_test-compiler.yml`) |
+|-------------|-----------------------------------|
+| Build | MPAS-A **`atmosphere_model`**, **double precision** (ECT theta perturbation is O(1e-14)) |
+| I/O | **SMIOL** by default (`USE_PIO2=false`) unless you intentionally test PIO |
+| MPI | Same rank count as CI: **4** MPI tasks per member (`mpirun`/`mpiexec` per site policy) |
+| Python | **3.x** with **netCDF4**, **numpy** (CI uses **`numpy<2`**, **scipy** for PyCECT) |
+| Repo layout | A checkout that includes **`.github/`** from **MPAS-Model-CI** (paths below assume repo root = `$REPO`) |
+
+**1. Load your programming environment (HPC)**
+
+Load modules (or your Spack stack) so that:
+
+- `mpif90` / `mpicc` and **`mpirun`** or **`mpiexec`** match the MPI you built against
+- NetCDF / Parallel-NetCDF / PNETCDF match what MPAS was linked to
+- Fortran stack is adequate: `ulimit -s unlimited` (Intel especially)
+
+There is **no** `/container/config_env.sh` on bare metal—this replaces the container’s env.
+
+**2. Source CI parameters**
+
+```bash
+REPO=/path/to/checkout   # must contain .github/ from MPAS-Model-CI
+set -a
+source "${REPO}/.github/ci-config.env"
+set +a
+```
+
+All **`ECT_*`**, **`RELEASE_ECT`**, **`RELEASE_TESTDATA_120KM`**, **`PYCECT_TAG`**, and MPI flag variables apply as in CI.
+
+**3. Download the 120km test case and ECT assets**
+
+Same release assets CI uses (URLs use this repo’s public releases):
+
+```bash
+# 120km mesh + namelist + streams
+curl -fsSL --retry 5 --retry-delay 5 \
+  -o 120km.tar.gz \
+  "https://github.com/NCAR/MPAS-Model-CI/releases/download/${RELEASE_TESTDATA_120KM}/120km.tar.gz"
+tar xzf 120km.tar.gz
+# Archive root is usually a single directory (e.g. 120km/). Match CI by renaming:
+mv 120km base-case
+
+# PyCECT ensemble summary (required for validation)
+curl -fsSL --retry 5 --retry-delay 5 \
+  -o "${ECT_SUMMARY_FILE}" \
+  "https://github.com/NCAR/MPAS-Model-CI/releases/download/${RELEASE_ECT}/${ECT_SUMMARY_FILE}"
+
+# Optional but recommended: spun-up restart (same as CI cache/download path)
+if curl -fsSL --retry 5 --retry-delay 5 \
+  -o "${ECT_RESTART_FILE}.gz" \
+  "https://github.com/NCAR/MPAS-Model-CI/releases/download/${RELEASE_ECT}/${ECT_RESTART_FILE}.gz"; then
+  gunzip -f "${ECT_RESTART_FILE}.gz"
+  HAVE_RESTART=1
+else
+  echo "Warning: no restart asset; runs use cold init.nc only (differs from typical CI spin-up path)"
+  HAVE_RESTART=0
+fi
+```
+
+**4. Run three perturbed members (members 0, 1, 2)**
+
+CI uses **`run-perturb-mpas`** with: `run-duration='0_02:36:00'`, `run-timeout` 45 minutes, **`num-ranks: 4`**, one member per job. Replicate that loop locally:
+
+- For each `MEMBER` in `0 1 2`:
+  - Use **`base-case/`** as the static inputs (same as CI after `download-testdata` with `dest-dir: base-case`): `cp -r base-case "run-ect-$(printf '%04d' ${MEMBER})"` and work inside that copy per member.
+  - Copy **`perturb_theta.py`** path: `"${REPO}/.github/actions/run-perturb-mpas/perturb_theta.py"`
+  - If **`HAVE_RESTART=1`**: copy restart into the run dir, set `config_do_restart`, `config_start_time = 'file'`, and namelist/stream edits exactly as in **`run-perturb-mpas`** (see that file’s `sed` and restart copy logic). If no restart: perturb **`init.nc`** (or `*.init*.nc`) only.
+  - Perturb: `python3 "${REPO}/.github/actions/run-perturb-mpas/perturb_theta.py" <ic_or_restart> --seed ${MEMBER} --magnitude ${ECT_PERTURB_MAGNITUDE}`
+  - Set `config_run_duration = '0_02:36:00'` in `namelist.atmosphere`; align **`streams.atmosphere`** output intervals with the same `sed` logic as **`run-perturb-mpas`** (restart stream off; output stream interval = run duration).
+  - Run: `timeout 45m mpirun -n 4 ${MPI_EXTRA} ./atmosphere_model`  
+    - **OpenMPI:** add flags from **`OPENMPI_RUN_FLAGS`** in `ci-config.env` only if your site needs them in **non-root** interactive runs (CI uses `--allow-run-as-root` for Docker; on Derecho you usually omit that).
+    - **MPICH:** export **`MPICH_GPU_SUPPORT_ENABLED=0`** and **`MPIR_CVAR_ENABLE_GPU=0`** if matching CI.
+
+- Collect **one history file per member** into a directory, e.g. `history-output/`, named so validation can see them. CI trims with **`trim_history.py`** and **`ECT_EXCLUDED_VARS`**; for parity:
+
+```bash
+EXCLUDE="${REPO}/${ECT_EXCLUDED_VARS}"
+HIST=$(ls -t run-*/history.*.nc | head -1)   # per member, after each run
+python3 "${REPO}/.github/actions/run-perturb-mpas/trim_history.py" \
+  "${HIST}" "history-output/history.${MEMBER}.nc" \
+  --tslice -1 \
+  --exclude-file "${EXCLUDE}"
+```
+
+If you skip trimming, ensure PyCECT sees variables consistent with the summary file (the exclude list drops noisy fields).
+
+**5. Install PyCECT and run validation**
+
+```bash
+git clone --depth 1 --branch "${PYCECT_TAG}" https://github.com/NCAR/PyCECT.git pycect
+python3 -m pip install --user 'numpy<2' scipy netCDF4
+
+python3 pycect/pyCECT.py \
+  --sumfile "${ECT_SUMMARY_FILE}" \
+  --indir history-output \
+  --tslice "${ECT_TSLICE}" \
+  --mpas \
+  --verbose \
+  --printStdMean
+```
+
+Success is indicated by **`****PASSED****`** in the output (same as **`validate-ect`**).
+
+**6. Differences to expect**
+
+- **Modules vs container:** Library paths differ; as long as the executable runs and history is valid NetCDF, ECT is comparable.
+- **Restart file:** If you cannot download **`ECT_RESTART_FILE`**, results may differ from CI that uses spin-up; focus on **PASSED/FAILED** semantics for your branch vs baseline.
+- **GPU:** For **`_test-gpu.yml`** parity, build with OpenACC and run on a GPU node; member logic is the same, with NVHPC + CUDA env.
+
 ## Shell Scripting Notes
 
 GitHub Actions runs bash with `set -e -o pipefail`:
