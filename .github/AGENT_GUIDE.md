@@ -136,9 +136,9 @@ The reusable workflow `_test-bfb.yml` takes a **`variants`** input: a JSON **arr
 
 Variants that share the same `use_pio` value reuse one compiled executable. The variant at **`reference_index`** (default **0**) is the reference; every other variant’s history file is compared to it (variable data, not raw file bytes — see `.github/scripts/compare-bfb-nc.py`).
 
-**GPU BFB:** set workflow input **`gpu: 'true'`** (string). `_test-bfb.yml` then resolves **`CONTAINER_IMAGE_GPU`**, builds with **`openacc: true`**, and runs build/run jobs on **`CIRRUS-4x8-gpu`**. **`compiler` must be `nvhpc`**. Precision is typically **`double`** to match `_test-gpu.yml`. Example caller: **`bfb-decomp-gpu.yml`** (1 vs 4 ranks, decomposition BFB on GPU). Do **not** add `pull_request` triggers for GPU BFB — same policy as `_test-gpu.yml`.
+**GPU BFB:** set workflow input **`gpu: 'true'`** (string). `_test-bfb.yml` then resolves **`CONTAINER_IMAGE_GPU`**, builds with **`openacc: true`**, and runs build/run jobs on **`CIRRUS-4x8-gpu`**. **`compiler` must be `nvhpc`**. Precision is typically **`double`** to match `_test-gpu.yml`. Example callers: **`bfb-decomp-gpu.yml`** (1 vs 4 ranks), **`bfb-io-gpu.yml`** (SMIOL vs PIO, 4 ranks). Do **not** add `pull_request` triggers for GPU BFB — same policy as `_test-gpu.yml`.
 
-**Adding a new BFB test:** copy `bfb-io.yml`, `bfb-decomp.yml`, or `bfb-decomp-gpu.yml`, set `name` and `on`, and edit **`variants`** (and `gpu` / `precision` when applicable). MPI rank count and PIO vs SMIOL are common examples only; any future per-run knob exposed on `variants` and implemented in `_test-bfb.yml` / composite actions can be combined the same way.
+**Adding a new BFB test:** copy `bfb-io.yml`, `bfb-decomp.yml`, `bfb-io-gpu.yml`, or `bfb-decomp-gpu.yml`, set `name` and `on`, and edit **`variants`** (and `gpu` / `precision` when applicable). MPI rank count and PIO vs SMIOL are common examples only; any future per-run knob exposed on `variants` and implemented in `_test-bfb.yml` / composite actions can be combined the same way.
 
 ## Container Environment
 
