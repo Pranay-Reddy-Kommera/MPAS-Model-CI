@@ -1,0 +1,49 @@
+# STUB: Registered on the default branch so `workflow_dispatch` / `gh workflow run` work.
+# Replace with the full CIRRUS Nsight workflow when merging feature-ci-nsys (or equivalent PR).
+
+name: GPU Nsight (profile)
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      mpi:
+        description: MPI implementation
+        required: true
+        default: mpich
+        type: choice
+        options:
+          - mpich
+          - openmpi
+      resolution:
+        description: Test case resolution
+        required: false
+        default: '120km'
+        type: string
+      num_procs:
+        description: MPI rank count
+        required: false
+        default: '4'
+        type: string
+      run_duration:
+        description: config_run_duration override
+        required: false
+        default: '0_00:12:00'
+        type: string
+      run_timeout_minutes:
+        description: Wall-clock timeout for full workflow (unused in stub)
+        required: false
+        default: '25'
+        type: string
+
+jobs:
+  stub:
+    name: Stub (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: |
+          echo "GPU Nsight (profile): stub only — full CIRRUS + nsys run merges from feature-ci-nsys."
+          echo "mpi=${{ inputs.mpi }} resolution=${{ inputs.resolution }} num_procs=${{ inputs.num_procs }}"
