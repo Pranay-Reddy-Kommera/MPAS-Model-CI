@@ -1,7 +1,4 @@
-# Nsight Systems GPU profiling on CIRRUS (short MPAS-A run, CLI stats + small artifacts).
-# Only config_run_duration is overridden — never config_dt (science-controlled per resolution).
-# Default duration matches one timestep for the stock 120km case (dt=720s → 0_00:12:00).
-# Security: self-hosted GPU — workflow_dispatch only (same policy as test-gpu-*.yml).
+# Nsight Systems GPU profiling on CIRRUS (keep to very short runs)
 
 name: GPU Nsight (profile)
 
