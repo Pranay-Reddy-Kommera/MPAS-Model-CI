@@ -39,6 +39,7 @@ This is `NCAR/MPAS-Model-CI`, a fork of `MPAS-Dev/MPAS-Model`. The MPAS source c
     ├── test-gpu-mpich.yml       # Caller: NVHPC+MPICH GPU (dispatch-only)
     ├── test-gpu-openmpi.yml     # Caller: NVHPC+OpenMPI GPU (dispatch-only)
     ├── compile-nvhpc-cuda-mpich.yml  # NVHPC+MPICH+CUDA compile-only (GA-hosted)
+    ├── profile-gpu-nsight.yml        # Nsight Systems profile on CIRRUS (dispatch-only)
     ├── ect-test.yml             # Standalone ECT (debugging)
     ├── ect-ensemble-gen.yml     # Generate ensemble summary (manual, expensive)
     ├── coverage.yml             # GCC coverage + Codecov upload
@@ -96,6 +97,10 @@ Same structure as `_test-compiler.yml` but builds with OpenACC (`openacc: 'true'
 ### compile-nvhpc-cuda-mpich.yml — CUDA toolchain (compile-only)
 
 Runs on **GitHub-hosted** `ubuntu-latest` inside `CONTAINER_IMAGE_GPU` (NVHPC + MPICH + CUDA). Builds MPAS-A with `openacc: 'true'` and double precision — **no GPU and no model run**. Supplements `_test-gpu.yml` (full ECT on CIRRUS) by catching toolchain breakage on every push/PR.
+
+### profile-gpu-nsight.yml — Nsight Systems (GPU)
+
+**`workflow_dispatch` only** on `CIRRUS-4x8-gpu` (same security model as `test-gpu-*.yml`). Resolves the CUDA container, builds OpenACC MPAS-A, downloads a test case, then runs `.github/scripts/run-nsys-profile.sh` to execute `nsys profile --trace=cuda,nvtx,osrt --stats=true` around `mpirun`. Uploads the session file (`.nsys-rep` / `.qdrep`) and `nsys stats` text with **3-day** artifact retention. Requires `nsys` on the runner image (PATH or under `/opt/nvidia/nsight-systems`).
 
 ### Other Workflows
 
@@ -203,7 +208,7 @@ Workflows accept `mpas-repository` and `mpas-ref` inputs for testing upstream MP
 
 ## Security
 
-- **Self-hosted runners**: GPU workflows use `workflow_dispatch` only. Never add `pull_request` triggers — fork PRs could execute arbitrary code on CIRRUS hardware.
+- **Self-hosted runners**: GPU workflows (`_test-gpu`, `test-gpu-*`, `profile-gpu-nsight`) use `workflow_dispatch` only. Never add `pull_request` triggers — fork PRs could execute arbitrary code on CIRRUS hardware.
 - **Secret isolation**: Test data is public release assets on this repo, so CI does not need a separate data-repo PAT for downloads.
 - **Cross-repo execution**: `workflow_dispatch` with external repo inputs runs `make` from that repo. Acceptable since only write-access users can trigger it.
 

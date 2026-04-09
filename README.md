@@ -25,6 +25,12 @@ GitHub-hosted runners have no GPU. **Compile-only** workflows verify the NVHPC +
 |----------|-----|--------|--------|-----------|
 | NVHPC | MPICH | CUDA (compile) | [![NVHPC+MPICH+CUDA (compile-only)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
 
+**GPU profiling (CIRRUS)** — short `nsys profile` run plus `nsys stats` text; `workflow_dispatch` only; artifacts kept a few days.
+
+| Workflow | Status |
+|----------|--------|
+| GPU Nsight (profile) | [![GPU Nsight (profile)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/profile-gpu-nsight.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/profile-gpu-nsight.yml) |
+
 \* Intel pinned to `hpcdev 25.09` (IFX 2025.2) to avoid an [IFX 2025.3 preprocessor regression](.github/ci-config.env).
 
 ECT subset container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
