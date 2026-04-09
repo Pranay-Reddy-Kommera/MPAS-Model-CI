@@ -1,0 +1,45 @@
+# Reusable: resolve NVHPC container image names (CPU + CUDA) from ci-config.env.
+# Used by GPU ECT and NVHPC+CUDA compile-only workflows to avoid duplicating
+# resolve-container steps.
+
+name: _resolve-nvhpc-containers
+
+on:
+  workflow_call:
+    inputs:
+      mpi:
+        description: MPI implementation (mpich, openmpi)
+        required: true
+        type: string
+    outputs:
+      image_cpu:
+        description: NVHPC CPU container (CONTAINER_IMAGE template)
+        value: ${{ jobs.resolve.outputs.image_cpu }}
+      image_gpu:
+        description: NVHPC + CUDA container (CONTAINER_IMAGE_GPU template)
+        value: ${{ jobs.resolve.outputs.image_gpu }}
+
+jobs:
+  resolve:
+    name: Resolve NVHPC containers
+    runs-on: ubuntu-latest
+    outputs:
+      image_cpu: ${{ steps.cpu.outputs.image }}
+      image_gpu: ${{ steps.gpu.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github
+
+      - uses: ./.github/actions/resolve-container
+        id: cpu
+        with:
+          compiler: nvhpc
+          mpi: ${{ inputs.mpi }}
+
+      - uses: ./.github/actions/resolve-container
+        id: gpu
+        with:
+          compiler: nvhpc
+          mpi: ${{ inputs.mpi }}
+          gpu: cuda

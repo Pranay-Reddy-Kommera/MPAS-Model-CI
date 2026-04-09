@@ -6,6 +6,12 @@ MPAS (Model for Prediction Across Scales) is a community atmospheric model used 
 
 MPAS has consistent coding conventions maintained over many years. Follow existing style.
 
+## Who this guide is for
+
+- **Students / new contributors** — Start with [Subset workflows](#subset-workflows-primary-ci) and the [test-* caller](#subset-workflows-primary-ci) you care about. Change compiler/MPI by picking a different caller or inputs; do not edit reusable templates until you understand the flow.
+- **Scientists** — Namelist and physics settings live in test-case archives and `ci-config.env` (`ECT_*`, `BFB_*`). CI may override **`config_run_duration`** for short runs; **`config_dt`** is not changed by our profiling workflows (science-controlled per resolution).
+- **Software engineers** — See [docs/ci-workflow-map.md](../docs/ci-workflow-map.md) for the full caller → reusable → composite map, [docs/ci-template-notes.md](../docs/ci-template-notes.md) for porting patterns to other NCAR repos, and the workflow graph below.
+
 ## Repository Layout
 
 This is `NCAR/MPAS-Model-CI`, a fork of `MPAS-Dev/MPAS-Model`. The MPAS source code (Fortran, `src/`, `Makefile`) is inherited from upstream. CI infrastructure lives in `.github/`.
@@ -30,6 +36,7 @@ This is `NCAR/MPAS-Model-CI`, a fork of `MPAS-Dev/MPAS-Model`. The MPAS source c
 └── workflows/
     ├── _test-compiler.yml       # Reusable: CPU build + ECT validation
     ├── _test-gpu.yml            # Reusable: GPU build + ECT validation (CIRRUS)
+    ├── _resolve-nvhpc-containers.yml  # Reusable: NVHPC CPU + CUDA image names
     ├── test-gcc-mpich.yml       # Caller: GNU+MPICH (auto on push/PR)
     ├── test-gcc-openmpi.yml     # Caller: GNU+OpenMPI (dispatch-only)
     ├── test-intel-mpich.yml     # Caller: Intel+MPICH (auto on push/PR)
@@ -43,6 +50,10 @@ This is `NCAR/MPAS-Model-CI`, a fork of `MPAS-Dev/MPAS-Model`. The MPAS source c
     ├── ect-ensemble-gen.yml     # Generate ensemble summary (manual, expensive)
     ├── coverage.yml             # GCC coverage + Codecov upload
     └── unit-tests.yml           # pFUnit unit tests
+
+docs/                            # CI documentation (repo root)
+├── ci-workflow-map.md           # Caller vs reusable inventory
+└── ci-template-notes.md         # Forking CI for other NCAR projects
 
 tests/                           # pFUnit test infrastructure (repo root)
 ├── CMakeLists.txt
@@ -65,7 +76,7 @@ Current tags: `testdata-240km-v1`, `testdata-120km-v1`, `ect-summary-v1`, `ect-r
 
 - **`master`** — default branch, mirrors upstream MPAS-Model. Workflow files must exist here for the `workflow_dispatch` UI button to appear.
 - **`develop`** — upstream develop branch.
-- **`feature-ci-cleanup`** — active development branch for CI improvements. PR #18 targets master.
+- **`feature-ci-cleanup`** — branch for modular CI refactors and docs (subset structure, reusable workflows).
 
 ## Workflow Architecture
 
@@ -80,6 +91,22 @@ Each compiler+MPI combination has a thin caller workflow that invokes a reusable
 **compile-nvhpc-cuda-mpich** (NVHPC + OpenACC compile-only on GitHub-hosted runners) also runs on push/PR.
 **OpenMPI and full GPU ECT callers** (`test-*-openmpi`, `test-gpu-*`) are `workflow_dispatch` only.
 
+### Workflow graph (NVHPC GPU path)
+
+Thin callers invoke reusable workflows; container names always come from `ci-config.env` via `resolve-container` (bundled inside `_resolve-nvhpc-containers` for NVHPC):
+
+```mermaid
+flowchart TB
+  caller[test-gpu-*.yml caller]
+  gpuWF[_test-gpu.yml]
+  resolveWF[_resolve-nvhpc-containers.yml]
+  cfg[ci-config.env]
+
+  caller --> gpuWF
+  gpuWF --> resolveWF
+  resolveWF --> cfg
+```
+
 ### _test-compiler.yml — Reusable CPU Workflow
 
 **Job flow**: `config` → `build` → `ect-run` (3 parallel members) → `ect-validate` → `cleanup`
@@ -92,6 +119,10 @@ Each compiler+MPI combination has a thin caller workflow that invokes a reusable
 ### _test-gpu.yml — Reusable GPU Workflow
 
 Same structure as `_test-compiler.yml` but builds with OpenACC (`openacc: 'true'`) and runs on `CIRRUS-4x8-gpu` self-hosted runners.
+
+### _resolve-nvhpc-containers.yml — Reusable NVHPC image resolution
+
+Runs on `ubuntu-latest`, checks out `.github` only, and calls **`resolve-container`** twice (NVHPC + MPI for CPU image, NVHPC + MPI + CUDA for GPU image). Exposes outputs **`image_cpu`** and **`image_gpu`**. Used by **`_test-gpu.yml`** (GPU jobs consume **`image_gpu`**) and **`compile-nvhpc-cuda-mpich.yml`** (compile job uses **`image_gpu`** only). Avoids duplicating resolve steps across workflows.
 
 ### compile-nvhpc-cuda-mpich.yml — CUDA toolchain (compile-only)
 
@@ -200,6 +231,10 @@ GitHub Actions runs bash with `set -e -o pipefail`:
 ## Cross-Repo Testing
 
 Workflows accept `mpas-repository` and `mpas-ref` inputs for testing upstream MPAS-Dev commits. The `checkout-mpas-source` action handles the two-step checkout and CI overlay. See `.github/docs/testing-upstream-commits.md`.
+
+## Maintainer cadence
+
+On **container image tag bumps** in `ci-config.env` or **quarterly**, skim thin caller workflows under `.github/workflows/` (names starting with `test-`), confirm comments still match behavior, and manually dispatch at least one **GPU** workflow (`test-gpu-*`) if CIRRUS is available. Update [docs/ci-workflow-map.md](../docs/ci-workflow-map.md) when adding callers or reusable workflows.
 
 ## Security
 

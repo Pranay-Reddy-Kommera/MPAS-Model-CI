@@ -1,5 +1,6 @@
 # Reusable workflow: GPU (CUDA) validation via ECT (NVHPC).
 # Called by test-gpu-mpich.yml and test-gpu-openmpi.yml.
+# NVHPC images: reusable workflow _resolve-nvhpc-containers.yml (inputs.mpi).
 #
 # Builds MPAS-A with OpenACC/CUDA on CIRRUS self-hosted runners, then
 # validates via ECT (PyCECT) — the same statistical test used for CPU
@@ -33,25 +34,9 @@ on:
 jobs:
   config:
     name: Resolve Config
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.container.outputs.image }}
-      image-gpu: ${{ steps.gpu-container.outputs.image }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          sparse-checkout: .github
-      - uses: ./.github/actions/resolve-container
-        id: container
-        with:
-          compiler: nvhpc
-          mpi: ${{ inputs.mpi }}
-      - uses: ./.github/actions/resolve-container
-        id: gpu-container
-        with:
-          compiler: nvhpc
-          mpi: ${{ inputs.mpi }}
-          gpu: cuda
+    uses: ./.github/workflows/_resolve-nvhpc-containers.yml
+    with:
+      mpi: ${{ inputs.mpi }}
 
   build:
     needs: config
@@ -59,7 +44,7 @@ jobs:
     runs-on:
       group: CIRRUS-4x8-gpu
     container:
-      image: ${{ needs.config.outputs.image-gpu }}
+      image: ${{ needs.config.outputs.image_gpu }}
 
     steps:
       - uses: actions/checkout@v5
@@ -116,7 +101,7 @@ jobs:
     runs-on:
       group: CIRRUS-4x8-gpu
     container:
-      image: ${{ needs.config.outputs.image-gpu }}
+      image: ${{ needs.config.outputs.image_gpu }}
 
     steps:
       - uses: actions/checkout@v5
