@@ -19,6 +19,12 @@ Each test builds in double precision, runs 3 perturbed ensemble members (4 MPI r
 | NVHPC | MPICH | GPU | [![NVHPC+MPICH (GPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
 | NVHPC | OpenMPI | GPU | [![NVHPC+OpenMPI (GPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-openmpi.yml) | `hpcdev:almalinux9-nvhpc-openmpi-cuda-26.02` |
 
+GitHub-hosted runners have no GPU. **Compile-only** workflows verify the NVHPC + OpenACC + CUDA toolchain by building MPAS-A (no model run):
+
+| Compiler | MPI | Target | Status | Container |
+|----------|-----|--------|--------|-----------|
+| NVHPC | MPICH | CUDA (compile) | [![NVHPC+MPICH+CUDA (compile-only)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
+
 \* Intel pinned to `hpcdev 25.09` (IFX 2025.2) to avoid an [IFX 2025.3 preprocessor regression](.github/ci-config.env).
 
 ECT subset container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
