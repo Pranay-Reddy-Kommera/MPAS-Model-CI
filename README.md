@@ -26,7 +26,7 @@ Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-conf
 
 ### Bit-for-bit and coverage
 
-Bit-for-bit workflows compare history output in single precision (240km case; see `BFB_*` in [`.github/ci-config.env`](.github/ci-config.env)). They run on `workflow_dispatch` and on pushes to `feature-ci-bfb`.
+Bit-for-bit workflows compare history output in single precision (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on manual dispatch.
 
 | Test | Status |
 |------|--------|
