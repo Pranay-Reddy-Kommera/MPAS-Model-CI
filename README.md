@@ -8,6 +8,8 @@ MPAS-v8.3.1
 MPICH subsets run on every push and PR. OpenMPI and GPU subsets are available via manual dispatch.
 Each test builds in double precision, runs 3 perturbed ensemble members (4 MPI ranks), and validates with [PyCECT](https://github.com/NCAR/PyCECT).
 
+Thanks to Teo Price-Broncucia and Allison Baker for their help on ensemble consistency testing. Methodology and background are given in Price-Broncucia et al. (2025), [*Geosci. Model Dev.*, 18, 2349–2372](https://gmd.copernicus.org/articles/18/2349/2025/).
+
 | Compiler | MPI | Target | Status | Container |
 |----------|-----|--------|--------|-----------|
 | GNU | MPICH | CPU | [![GNU+MPICH (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gcc-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gcc-mpich.yml) | `hpcdev:almalinux9-gcc14-mpich-26.02` |
