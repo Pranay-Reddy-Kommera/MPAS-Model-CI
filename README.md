@@ -3,7 +3,7 @@ MPAS-v8.3.1
 
 ## CI Status
 
-### ECT (PyCECT)
+### Ensemble Consistency Test
 
 MPICH subsets run on every push and PR. OpenMPI and GPU subsets are available via manual dispatch.
 Each test builds in double precision, runs 3 perturbed ensemble members (4 MPI ranks), and validates with [PyCECT](https://github.com/NCAR/PyCECT).
