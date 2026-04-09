@@ -143,9 +143,13 @@ jobs:
         working-directory: nsight-case
         run: |
           if ! command -v nsys &>/dev/null; then
-            for d in /opt/nvidia/nsight-systems/*/bin /usr/local/cuda/bin; do
+            for d in /opt/nvidia/nsight-systems/*/bin /usr/local/cuda/bin /usr/local/cuda-*/bin; do
               [ -d "$d" ] && export PATH="$d:$PATH"
             done
+          fi
+          if ! command -v nsys &>/dev/null; then
+            echo "::warning::nsys not found; skipping nsys stats generation"
+            exit 0
           fi
           shopt -s nullglob
           REP=""
