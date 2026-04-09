@@ -20,7 +20,8 @@ This document describes what is **MPAS-specific** versus **portable** when copyi
 
 - **Container registry**: images matching `ci-config.env` templates (e.g. `ncarcisl/hpcdev-x86_64` tags), or change templates to your registry.
 - **Self-hosted runners**: GPU workflows reference `CIRRUS-4x8-gpu` (or your org’s runner group). Update `runs-on:` to match.
-- **GitHub Actions permissions**: workflows use `contents: read`; artifact upload may need `actions: write` where used.
+- **GitHub Actions permissions**: workflows generally use `contents: read`; artifact upload itself does not require `actions: write`.
+  Use elevated permissions only for specific operations, such as deleting artifacts via `gh api` (`actions: write`) or publishing releases (`contents: write`).
 
 ## Minimal fork checklist
 
