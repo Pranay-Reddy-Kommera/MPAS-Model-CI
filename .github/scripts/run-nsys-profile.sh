@@ -25,21 +25,24 @@ if [ -f "${CI_CONFIG}" ]; then
   source "${CI_CONFIG}"
 fi
 
-# Locate nsys (not always on default PATH in minimal images)
-if ! command -v nsys &>/dev/null; then
-  for d in /opt/nvidia/nsight-systems/*/bin /usr/local/cuda/bin /usr/local/cuda-*/bin; do
-    if [ -d "$d" ]; then
-      export PATH="${d}:${PATH}"
-    fi
-  done
-fi
-if ! command -v nsys &>/dev/null; then
-  echo "::error::nsys (Nsight Systems) not found. Install Nsight Systems or use an image that includes it."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/resolve-nsys.sh"
+
+if ! resolve_nsys; then
+  echo "::error::No working nsys found. NVHPC may expose a stub that fails with Nsight version errors;"
+  echo "::error::install a full Nsight Systems build under /opt/nvidia/nsight-systems or ensure CUDA toolkit nsys is on PATH."
   exit 1
 fi
 
-echo "=== nsys ==="
-nsys --version
+echo "=== nsys (${NSYS_BIN}) ==="
+"${NSYS_BIN}" --version
+
+if [ -n "${GITHUB_ENV:-}" ]; then
+  {
+    echo "NSYS_BIN=${NSYS_BIN}"
+  } >> "${GITHUB_ENV}"
+fi
 
 MPI_FLAGS=""
 if [ "${MPI_IMPL}" = "openmpi" ]; then
@@ -62,7 +65,7 @@ echo "  output:  ${OUT_ABS}"
 echo "  timeout: ${TIMEOUT}m"
 
 set +e
-timeout "${TIMEOUT}"m nsys profile \
+timeout "${TIMEOUT}"m "${NSYS_BIN}" profile \
   --trace=cuda,nvtx,osrt \
   --stats=true \
   -o "${OUT_ABS}" \
