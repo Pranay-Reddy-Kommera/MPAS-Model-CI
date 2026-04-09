@@ -100,7 +100,7 @@ Runs on **GitHub-hosted** `ubuntu-latest` inside `CONTAINER_IMAGE_GPU` (NVHPC + 
 
 ### profile-gpu-nsight.yml — Nsight Systems (GPU)
 
-**`workflow_dispatch` only** on `CIRRUS-4x8-gpu` (same security model as `test-gpu-*.yml`). Resolves the CUDA container, builds OpenACC MPAS-A, downloads a test case, then runs `.github/scripts/run-nsys-profile.sh` to execute `nsys profile --trace=cuda,nvtx,osrt --stats=true` around `mpirun`. Uploads the session file (`.nsys-rep` / `.qdrep`) and `nsys stats` text with **3-day** artifact retention. Requires `nsys` on the runner image (PATH or under `/opt/nvidia/nsight-systems`).
+**`workflow_dispatch` only** on `CIRRUS-4x8-gpu` (same security model as `test-gpu-*.yml`). Resolves the CUDA container, builds OpenACC MPAS-A, downloads a test case, then **temporarily lowers `config_dt`** in the test-case namelist so a **very short** `config_run_duration` (defaults: **60s** timestep length and **60s** simulated time — one timestep) still completes a step; then runs `.github/scripts/run-nsys-profile.sh` to execute `nsys profile --trace=cuda,nvtx,osrt --stats=true` around `mpirun`. Uploads the session file (`.nsys-rep` / `.qdrep`) and `nsys stats` text with **3-day** artifact retention. Requires `nsys` on the runner image (PATH or under `/opt/nvidia/nsight-systems`). If the model is unstable at the default dt, increase the `config_dt_seconds` / `run_duration` dispatch inputs.
 
 ### Other Workflows
 
