@@ -4,6 +4,8 @@
 # produce bitwise-identical history variable data. The first variant (or
 # reference_index) is the reference; every other variant is compared against it.
 #
+# Optional input `gpu: 'true'`: CUDA container, OpenACC build, CIRRUS runners (nvhpc only).
+#
 # MPI rank count and PIO vs SMIOL are common dimensions but not special — add any
 # new scenario by appending another variant object (and a small caller workflow).
 
@@ -56,6 +58,11 @@ on:
         required: false
         type: number
         default: 0
+      gpu:
+        description: 'If true, CUDA image + OpenACC build + CIRRUS GPU runners (requires compiler nvhpc). Same security model as _test-gpu — use workflow_dispatch only.'
+        required: false
+        type: string
+        default: 'false'
 
 jobs:
   config:
@@ -70,11 +77,22 @@ jobs:
         with:
           sparse-checkout: .github
 
+      - name: Validate GPU BFB inputs
+        if: ${{ inputs.gpu == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.compiler }}" != "nvhpc" ]; then
+            echo "::error::gpu=true requires compiler=nvhpc (got ${{ inputs.compiler }})"
+            exit 1
+          fi
+
       - uses: ./.github/actions/resolve-container
         id: container
         with:
           compiler: ${{ inputs.compiler }}
           mpi: ${{ inputs.mpi }}
+          gpu: ${{ inputs.gpu == 'true' && 'cuda' || '' }}
 
       - name: Parse variants
         id: variants
@@ -125,7 +143,7 @@ jobs:
       matrix:
         build_tag: ${{ fromJSON(needs.config.outputs.build_tags) }}
     name: Build (${{ matrix.build_tag }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.gpu == 'true' && fromJSON('{"group":"CIRRUS-4x8-gpu"}') || 'ubuntu-latest' }}
     container:
       image: ${{ needs.config.outputs.image }}
     steps:
@@ -138,6 +156,7 @@ jobs:
         with:
           compiler: ${{ inputs.compiler }}
           use-pio: ${{ matrix.build_tag == 'pio' && 'true' || 'false' }}
+          openacc: ${{ inputs.gpu == 'true' && 'true' || 'false' }}
           precision: ${{ inputs.precision }}
 
       - name: Upload executable
@@ -154,7 +173,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.config.outputs.run_variants) }}
     name: Run (${{ matrix.id }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.gpu == 'true' && fromJSON('{"group":"CIRRUS-4x8-gpu"}') || 'ubuntu-latest' }}
     container:
       image: ${{ needs.config.outputs.image }}
     steps:
@@ -164,6 +183,12 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: exe-bfb-${{ matrix.build_tag }}
+
+      - name: Check GPU availability
+        if: ${{ inputs.gpu == 'true' }}
+        run: |
+          echo "=== GPU Information ==="
+          nvidia-smi || echo "WARNING: nvidia-smi failed"
 
       - name: Run MPAS-A
         uses: ./.github/actions/run-mpas
