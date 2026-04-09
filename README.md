@@ -24,9 +24,9 @@ Each test builds in double precision, runs 3 perturbed ensemble members (4 MPI r
 ECT subset container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
 Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-config.env`](.github/ci-config.env).
 
-### Bit-for-bit and coverage
+### Additional testing 
 
-Bit-for-bit workflows compare history output in single precision (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on manual dispatch.
+Bit-for-bit (BFB) workflows compare history output in single precision (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on manual dispatch.
 
 | Test | Status |
 |------|--------|
