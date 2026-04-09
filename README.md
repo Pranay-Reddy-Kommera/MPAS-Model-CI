@@ -23,7 +23,7 @@ GitHub-hosted runners have no GPU. **Compile-only** workflows verify the NVHPC +
 
 | Compiler | MPI | Target | Status | Container |
 |----------|-----|--------|--------|-----------|
-| NVHPC | MPICH | CUDA (compile) | [![NVHPC+MPICH+CUDA (compile-only)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
+| NVHPC | MPICH | CUDA (compile) | [![NVHPC+MPICH (GPU Compile-only)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/compile-nvhpc-cuda-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
 
 **GPU profiling (CIRRUS)** — `nsys profile` on a short run (`config_run_duration` only; `config_dt` unchanged) plus `nsys stats` text; `workflow_dispatch` only; artifacts kept a few days.
 

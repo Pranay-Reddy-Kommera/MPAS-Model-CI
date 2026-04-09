@@ -1,7 +1,7 @@
 # NVHPC + MPICH + CUDA: compile-only on GitHub-hosted runners.
 # Validates the OpenACC/CUDA toolchain (no GPU present; no model run).
 
-name: "NVHPC+MPICH+CUDA (compile-only)"
+name: "NVHPC+MPICH (GPU Compile-only)"
 
 permissions:
   contents: read
@@ -54,5 +54,5 @@ jobs:
       - name: Summary
         shell: bash
         run: |
-          echo "## NVHPC + MPICH + CUDA compile-only" >> "$GITHUB_STEP_SUMMARY"
+          echo "## NVHPC+MPICH (GPU Compile-only)" >> "$GITHUB_STEP_SUMMARY"
           echo "Built \`atmosphere_model\` with OpenACC in ${{ needs.config.outputs.image }}." >> "$GITHUB_STEP_SUMMARY"
