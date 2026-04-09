@@ -38,6 +38,7 @@ This is `NCAR/MPAS-Model-CI`, a fork of `MPAS-Dev/MPAS-Model`. The MPAS source c
     ├── test-nvhpc-openmpi.yml   # Caller: NVHPC+OpenMPI (dispatch-only)
     ├── test-gpu-mpich.yml       # Caller: NVHPC+MPICH GPU (dispatch-only)
     ├── test-gpu-openmpi.yml     # Caller: NVHPC+OpenMPI GPU (dispatch-only)
+    ├── compile-nvhpc-cuda-mpich.yml  # NVHPC+MPICH+CUDA compile-only (GA-hosted)
     ├── ect-test.yml             # Standalone ECT (debugging)
     ├── ect-ensemble-gen.yml     # Generate ensemble summary (manual, expensive)
     ├── coverage.yml             # GCC coverage + Codecov upload
@@ -76,7 +77,8 @@ Each compiler+MPI combination has a thin caller workflow that invokes a reusable
 - **GPU subsets** call `_test-gpu.yml` with `mpi` input (always NVHPC)
 
 **MPICH callers** (`test-gcc-mpich`, `test-intel-mpich`, `test-nvhpc-mpich`) run on push/PR to `master`/`develop`.
-**OpenMPI and GPU callers** are `workflow_dispatch` only.
+**compile-nvhpc-cuda-mpich** (NVHPC + OpenACC compile-only on GitHub-hosted runners) also runs on push/PR.
+**OpenMPI and full GPU ECT callers** (`test-*-openmpi`, `test-gpu-*`) are `workflow_dispatch` only.
 
 ### _test-compiler.yml — Reusable CPU Workflow
 
@@ -90,6 +92,10 @@ Each compiler+MPI combination has a thin caller workflow that invokes a reusable
 ### _test-gpu.yml — Reusable GPU Workflow
 
 Same structure as `_test-compiler.yml` but builds with OpenACC (`openacc: 'true'`) and runs on `CIRRUS-4x8-gpu` self-hosted runners.
+
+### compile-nvhpc-cuda-mpich.yml — CUDA toolchain (compile-only)
+
+Runs on **GitHub-hosted** `ubuntu-latest` inside `CONTAINER_IMAGE_GPU` (NVHPC + MPICH + CUDA). Builds MPAS-A with `openacc: 'true'` and double precision — **no GPU and no model run**. Supplements `_test-gpu.yml` (full ECT on CIRRUS) by catching toolchain breakage on every push/PR.
 
 ### Other Workflows
 
