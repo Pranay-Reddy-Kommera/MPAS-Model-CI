@@ -1,6 +1,6 @@
-# Nsight Systems GPU profiling on CIRRUS (very short MPAS-A run, CLI stats + small artifacts).
-# The 120km archive uses config_dt=720s; we temporarily lower config_dt so a brief
-# config_run_duration still completes at least one timestep (profiling-only).
+# Nsight Systems GPU profiling on CIRRUS (short MPAS-A run, CLI stats + small artifacts).
+# Only config_run_duration is overridden — never config_dt (science-controlled per resolution).
+# Default duration matches one timestep for the stock 120km case (dt=720s → 0_00:12:00).
 # Security: self-hosted GPU — workflow_dispatch only (same policy as test-gpu-*.yml).
 
 name: GPU Nsight (profile)
@@ -30,20 +30,15 @@ on:
         required: false
         default: '4'
         type: string
-      config_dt_seconds:
-        description: Temporary config_dt (seconds) for profiling — must be <= run_duration in seconds
-        required: false
-        default: '60'
-        type: string
       run_duration:
-        description: config_run_duration (default one timestep at default config_dt; 0_00:01:00 = 60s simulated)
+        description: config_run_duration only (namelist dt unchanged). Default 0_00:12:00 = one timestep for stock 120km (config_dt=720s). Override if you use another resolution.
         required: false
-        default: '0_00:01:00'
+        default: '0_00:12:00'
         type: string
       run_timeout_minutes:
         description: Wall-clock timeout for mpirun + nsys
         required: false
-        default: '8'
+        default: '25'
         type: string
 
 jobs:
@@ -122,17 +117,14 @@ jobs:
           resolution: ${{ inputs.resolution }}
           dest-dir: nsight-case
 
-      - name: Link executable and namelist (brief profiling)
+      - name: Link executable and config_run_duration (dt unchanged)
         shell: bash
         run: |
           chmod +x atmosphere_model
           ln -sf "$(pwd)/atmosphere_model" nsight-case/atmosphere_model
-          DT="${{ inputs.config_dt_seconds }}"
           DURATION="${{ inputs.run_duration }}"
-          sed -i "s/config_dt = [0-9.]*/config_dt = ${DT}/" nsight-case/namelist.atmosphere
           sed -i "s/config_run_duration = '[^']*'/config_run_duration = '${DURATION}'/" nsight-case/namelist.atmosphere
-          echo "config_dt -> ${DT}"
-          echo "config_run_duration -> ${DURATION}"
+          echo "config_run_duration -> ${DURATION} (config_dt left as in test case)"
           grep -E 'config_dt|config_run_duration' nsight-case/namelist.atmosphere | head -n 5
 
       - name: Run nsys profile
@@ -181,7 +173,6 @@ jobs:
             echo "- MPI: ${{ inputs.mpi }}"
             echo "- Resolution: ${{ inputs.resolution }}"
             echo "- Ranks: ${{ inputs.num_procs }}"
-            echo "- config_dt (profiling): ${{ inputs.config_dt_seconds }} s"
             echo "- config_run_duration: ${{ inputs.run_duration }}"
             echo ""
             echo "Session files and \`nsys stats\` text are uploaded as artifacts (short retention)."
