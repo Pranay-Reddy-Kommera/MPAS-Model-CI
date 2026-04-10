@@ -23,7 +23,7 @@ Thanks to Teo Price-Broncucia and Allison Baker for their help on ensemble consi
 
 \* Intel pinned to `hpcdev 25.09` (IFX 2025.2) to avoid an IFX 2025.3 preprocessor regression. This issue has been addressed by [MPAS-Dev:develop #1392](https://github.com/MPAS-Dev/MPAS-Model/pull/1392)
 
-† **NVHPC+OpenMPI** rows use a static grey “no data” badge instead of the live Actions badge so the README does not show a red failure from a suspected OpenMPI runtime regression; workflows remain available via manual dispatch. See [AGENT_GUIDE.md](.github/AGENT_GUIDE.md) (NVHPC+OpenMPI).
+† **NVHPC+OpenMPI** rows have a grey “no data” badge because of a suspected OpenMPI runtime regression; workflows remain available via manual dispatch.
 
 **Compile-only** workflows verify the NVHPC + OpenACC + CUDA toolchain by building on a Github Action runner without a GPU
 
