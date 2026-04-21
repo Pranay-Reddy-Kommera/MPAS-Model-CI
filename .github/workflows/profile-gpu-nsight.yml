@@ -20,7 +20,7 @@ on:
       resolution:
         description: Test case resolution (see RELEASE_TESTDATA_* in ci-config.env)
         required: false
-        default: '120km'
+        default: '240km'
         type: string
       num_procs:
         description: MPI rank count
@@ -28,14 +28,14 @@ on:
         default: '4'
         type: string
       run_duration:
-        description: config_run_duration only (namelist dt unchanged). Default 0_00:12:00 = one timestep for stock 120km (config_dt=720s). Override if you use another resolution.
+        description: config_run_duration only (namelist dt unchanged). Default 0_01:00:00 = three timesteps for stock 240km case (config_dt=1200s). Override for other resolutions (must be at least one timestep for that case config_dt).
         required: false
-        default: '0_00:12:00'
+        default: '0_01:00:00'
         type: string
       run_timeout_minutes:
         description: Wall-clock timeout for mpirun + nsys
         required: false
-        default: '25'
+        default: '40'
         type: string
 
 jobs:
