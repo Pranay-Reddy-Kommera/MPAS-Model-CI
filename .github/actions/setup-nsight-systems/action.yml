@@ -1,0 +1,39 @@
+name: 'Setup Nsight Systems CLI'
+description: |
+  Ensure a working `nsys` is available for GPU profiling. If the container image
+  does not provide Nsight Systems (or only an NVHPC stub), installs the
+  `nsight-systems-cli` RPM set from NVIDIA's devtools repository (RHEL/Alma/Rocky).
+  Caches downloaded RPMs under `.cache/nsight-systems-rpms` for faster reruns.
+
+runs:
+  using: composite
+  steps:
+    - id: nsys_ver
+      shell: bash
+      run: |
+        V=1
+        if [ -f .github/ci-config.env ]; then
+          L=$(grep '^NSYS_CLI_CACHE_VERSION=' .github/ci-config.env | head -1 || true)
+          if [ -n "${L}" ]; then
+            V="${L#*=}"
+            V="${V%%#*}"
+            V="${V%%[[:space:]]*}"
+          fi
+        fi
+        echo "version=${V}" >> "${GITHUB_OUTPUT}"
+        echo "NSYS_CLI_CACHE_VERSION=${V}" >> "${GITHUB_ENV}"
+
+    - name: Cache nsight-systems-cli RPMs
+      id: cache-nsys
+      uses: actions/cache@v5
+      with:
+        path: ${{ github.workspace }}/.cache/nsight-systems-rpms
+        key: nsight-cli-${{ steps.nsys_ver.outputs.version }}-rhel9-${{ runner.arch }}-${{ hashFiles('.github/scripts/install-nsight-systems-cli.sh', '.github/scripts/resolve-nsys.sh') }}
+
+    - name: Install nsight-systems-cli
+      shell: bash
+      env:
+        NSYS_RPM_CACHE_DIR: ${{ github.workspace }}/.cache/nsight-systems-rpms
+      run: |
+        chmod +x .github/scripts/install-nsight-systems-cli.sh
+        bash .github/scripts/install-nsight-systems-cli.sh
