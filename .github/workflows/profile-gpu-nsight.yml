@@ -103,6 +103,9 @@ jobs:
           nvidia-smi || echo "::warning::nvidia-smi failed"
           nvidia-smi || true
 
+      - name: Setup Nsight Systems CLI (install + RPM cache)
+        uses: ./.github/actions/setup-nsight-systems
+
       - name: Download executable
         uses: actions/download-artifact@v7
         with:

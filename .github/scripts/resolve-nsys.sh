@@ -8,6 +8,11 @@
 # shellcheck shell=bash
 
 resolve_nsys() {
+  if [ -n "${NSYS_BIN:-}" ] && [ -x "${NSYS_BIN}" ] && "${NSYS_BIN}" --version &>/dev/null; then
+    export NSYS_BIN
+    return 0
+  fi
+
   local prepend="" d dir
   local -a dirs
 
