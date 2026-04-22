@@ -67,7 +67,7 @@ Current tags: `testdata-240km-v1`, `testdata-120km-v1`, `ect-summary-v1`, `ect-r
 
 - **`master`** — default branch, mirrors upstream MPAS-Model. Workflow files must exist here for the `workflow_dispatch` UI button to appear.
 - **`develop`** — upstream develop branch.
-- **Topic branches** — fork from `master` for changes. Branches named **`hackathon-*`** (e.g. `hackathon-team-a`) auto-run **CPU ECT subsets** (push/PR) and **GPU ECT subsets** (push and in-repo PR; fork PRs skip GPU — see Security). CPU BFB callers also run on push to `hackathon`, `hackathon/**`, `hackathon-*`, or legacy `feature-ci-bfb`.
+- **Topic branches** — fork from `master` for changes. Branches named **`hackathon-*`** auto-run **CPU ECT subsets** (push/PR). **GPU ECT** stays **`workflow_dispatch` only** (see Security). CPU BFB callers also run on push to `hackathon`, `hackathon/**`, `hackathon-*`, or legacy `feature-ci-bfb`.
 
 ## Workflow Architecture
 
@@ -81,7 +81,7 @@ Each compiler+MPI combination has a thin caller workflow that invokes a reusable
 **MPICH callers** (`test-gcc-mpich`, `test-intel-mpich`, `test-nvhpc-mpich`) run on push/PR to `master`/`develop` and to **`hackathon-*`**.
 **compile-nvhpc-cuda-mpich** (NVHPC + OpenACC compile-only on GitHub-hosted runners) also runs on push/PR to those branches.
 **OpenMPI CPU callers** (`test-*-openmpi`) stay **`workflow_dispatch` only** (optional; OpenMPI regressions).
-**GPU ECT callers** (`test-gpu-mpich`, `test-gpu-openmpi`) run on **`push` and `pull_request` to `hackathon-*`** (PR job skipped for **fork** heads) and on `workflow_dispatch`.
+**GPU ECT callers** (`test-gpu-mpich`, `test-gpu-openmpi`) are **`workflow_dispatch` only** (self-hosted CIRRUS).
 
 ### _test-compiler.yml — Reusable CPU Workflow
 
@@ -117,7 +117,7 @@ All container images, compiler mappings, MPI flags, per-asset release tags, ECT 
 
 Key settings:
 - `CONTAINER_IMAGE` / `CONTAINER_IMAGE_GPU` — image templates with `{compiler}` and `{mpi}` placeholders
-- `CONTAINER_IMAGE_{compiler}` — per-compiler overrides (Intel pinned to `hpcdev 25.09`)
+- `CONTAINER_IMAGE_{compiler}` — optional per-compiler image template overrides
 - `CONTAINER_COMPILER_{name}` — name mappings when image tags differ (e.g., `gcc` → `gcc14`)
 - `MAKE_TARGET_{compiler}` — maps CI names to Makefile targets
 - `NVHPC_EXTRA_MAKE_FLAGS` / `ONEAPI_EXTRA_MAKE_FLAGS` — compiler-specific build workarounds
@@ -152,8 +152,7 @@ Variants that share the same `use_pio` value reuse one compiled executable. The 
 All builds and runs use `ncarcisl/hpcdev-x86_64` Docker containers. Image names are resolved from `ci-config.env` templates.
 
 Current containers:
-- **GCC, NVHPC**: `hpcdev-x86_64:almalinux9-{compiler}-{mpi}-26.02`
-- **Intel**: `hpcdev-x86_64:leap-oneapi-{mpi}-25.09` (pinned to avoid IFX 2025.3 fpp regression)
+- **GCC, NVHPC, Intel (OneAPI)**: `hpcdev-x86_64:almalinux9-{compiler}-{mpi}-26.02` (`CONTAINER_COMPILER_*` mappings apply, e.g. `gcc` → `gcc14`)
 - **GPU**: `hpcdev-x86_64:almalinux9-nvhpc-{mpi}-cuda-26.02`
 
 Container facts:
@@ -215,12 +214,11 @@ Workflows accept `mpas-repository` and `mpas-ref` inputs for testing upstream MP
 
 ## Security
 
-- **Self-hosted runners**: GPU ECT workflows (`_test-gpu`, `test-gpu-*`) may use `pull_request` to **`hackathon-*`** only with a **non-fork guard** on the job (`pull_request.head.repo.fork == false`). **`push` to `hackathon-*`** is allowed for trusted writers. Do **not** run GPU ECT on `pull_request` to `master`/`develop` from forks. **`profile-gpu-nsight`** stays `workflow_dispatch` only.
+- **Self-hosted runners**: GPU ECT workflows (`_test-gpu`, `test-gpu-*`) use **`workflow_dispatch` only**. Do **not** add `push` or `pull_request` triggers — unreviewed code could run on CIRRUS. **`profile-gpu-nsight`** is also `workflow_dispatch` only.
 - **Secret isolation**: Test data is public release assets on this repo, so CI does not need a separate data-repo PAT for downloads.
 - **Cross-repo execution**: `workflow_dispatch` with external repo inputs runs `make` from that repo. Acceptable since only write-access users can trigger it.
 
 ## Known Issues
 
-- **IFX 2025.3 fpp regression**: breaks `#define COMMA ,` pattern in 6+ framework files. Intel pinned to hpcdev 25.09 (IFX 2025.2.1). Remove override when IFX 2025.4+ is available.
 - **NVHPC+OpenMPI**: model exits 134 (SIGABRT) on GA runners with 4 ranks. MPICH works. Caller workflows and reusable CPU/GPU jobs mark this combination `continue-on-error` until resolved.
 - **NVHPC/Intel MPI F08 bindings**: broken with hpcdev MPI libraries. Both use `MPAS_MPI_F08=0` workaround.

@@ -14,16 +14,12 @@ Thanks to Teo Price-Broncucia and Allison Baker for their help on ensemble consi
 |----------|-----|--------|--------|-----------|
 | GNU | MPICH | CPU | [![GNU+MPICH (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gcc-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gcc-mpich.yml) | `hpcdev:almalinux9-gcc14-mpich-26.02` |
 | GNU | OpenMPI | CPU | [![GNU+OpenMPI (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gcc-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gcc-openmpi.yml) | `hpcdev:almalinux9-gcc14-openmpi-26.02` |
-| Intel | MPICH | CPU | [![Intel+MPICH (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-mpich.yml) | `hpcdev:leap-oneapi-mpich-25.09`\* |
-| Intel | OpenMPI | CPU | [![Intel+OpenMPI (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-openmpi.yml) | `hpcdev:leap-oneapi-openmpi-25.09`\* |
+| Intel | MPICH | CPU | [![Intel+MPICH (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-mpich.yml) | `hpcdev:almalinux9-oneapi-mpich-26.02` |
+| Intel | OpenMPI | CPU | [![Intel+OpenMPI (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-intel-openmpi.yml) | `hpcdev:almalinux9-oneapi-openmpi-26.02` |
 | NVHPC | MPICH | CPU | [![NVHPC+MPICH (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-nvhpc-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-nvhpc-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-26.02` |
 | NVHPC | OpenMPI | CPU | [![NVHPC+OpenMPI (CPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-nvhpc-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-nvhpc-openmpi.yml) | `hpcdev:almalinux9-nvhpc-openmpi-26.02` |
 | NVHPC | MPICH | GPU | [![NVHPC+MPICH (GPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-mpich.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-mpich.yml) | `hpcdev:almalinux9-nvhpc-mpich-cuda-26.02` |
 | NVHPC | OpenMPI | GPU | [![NVHPC+OpenMPI (GPU)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-openmpi.yml/badge.svg)](https://github.com/NCAR/MPAS-Model-CI/actions/workflows/test-gpu-openmpi.yml) | `hpcdev:almalinux9-nvhpc-openmpi-cuda-26.02` |
-
-\* Intel pinned to `hpcdev 25.09` (IFX 2025.2) to avoid an IFX 2025.3 preprocessor regression. This issue has been addressed by [MPAS-Dev:develop #1392](https://github.com/MPAS-Dev/MPAS-Model/pull/1392)
-
-† **NVHPC+OpenMPI** ECT is fragile (suspected OpenMPI runtime issues: CPU job may exit 134 on GA runners; GPU path is `workflow_dispatch` and **`hackathon-*`** only). Badges reflect the latest workflow run — use **MPICH** subsets for routine green CI.
 
 **Compile-only** workflows verify the NVHPC + OpenACC + CUDA toolchain by building on a Github Action runner without a GPU
 
@@ -35,7 +31,7 @@ Thanks to Teo Price-Broncucia and Allison Baker for their help on ensemble consi
 
 ### Additional testing 
 
-Bit-for-bit (BFB) workflows compare history output in single precision for CPU runs (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on **`workflow_dispatch`**, and CPU BFB callers also run on push to **`hackathon`**, **`hackathon/**`**, or legacy **`feature-ci-bfb`**. **GPU BFB** workflows (`bfb-io-gpu`, `bfb-decomp-gpu`) use NVHPC + CUDA + OpenACC, double precision, CIRRUS runners, and only `workflow_dispatch` — same policy as the GPU ECT subset.
+Bit-for-bit (BFB) workflows compare history output in single precision for CPU runs (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on **`workflow_dispatch`**, and CPU BFB callers also run on push to **`hackathon-*`**, **`hackathon`**, **`hackathon/**`**, or legacy **`feature-ci-bfb`**. **GPU BFB** workflows (`bfb-io-gpu`, `bfb-decomp-gpu`) use NVHPC + CUDA + OpenACC, double precision, CIRRUS runners, and only `workflow_dispatch` — same policy as the GPU ECT subset.
 
 | Test | Status |
 |------|--------|
@@ -50,10 +46,10 @@ Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-conf
 
 ### Hackathon quick start
 
-- Use **`master`** as the base branch. Maintainer reference: [`.github/AGENT_GUIDE.md`](.github/AGENT_GUIDE.md).
+- Use **`master`** as the base branch. Shared CI settings and container tags are in [`.github/ci-config.env`](.github/ci-config.env); reusable workflows live under [`.github/workflows/`](.github/workflows/).
 - **Fork → branch → PR** into [`NCAR/MPAS-Model-CI`](https://github.com/NCAR/MPAS-Model-CI) with base **`master`** (not the upstream `MPAS-Dev/MPAS-Model` fork unless that is intentional).
 - **Test another MPAS fork or commit:** Actions → **Cross-Repo Test** or use **`workflow_dispatch`** on **Ensemble Consistency Test (ECT)**, **coverage**, or **ect-ensemble-gen** with `mpas-repository` / `mpas-ref`. Details: [`.github/docs/testing-upstream-commits.md`](.github/docs/testing-upstream-commits.md).
-- **GPU ECT** (`test-gpu-mpich` / `test-gpu-openmpi`) runs on **push** and **in-repo PRs** targeting **`hackathon-*`** (fork PRs skip GPU until a maintainer merges — merge **push** then runs GPU). **GPU BFB** and **Nsight profiling** stay **manual dispatch**; coordinate with maintainers as needed.
+- **GPU ECT** (`test-gpu-mpich` / `test-gpu-openmpi`) is **`workflow_dispatch` only** (CIRRUS self-hosted — not tied to `hackathon-*` pushes). **GPU BFB** and **Nsight profiling** are also **manual dispatch**; coordinate with maintainers as needed.
 
 The Model for Prediction Across Scales (MPAS) is a collaborative project for
 developing atmosphere, ocean, and other earth-system simulation components for
