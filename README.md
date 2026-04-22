@@ -53,7 +53,7 @@ Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-conf
 - Use **`master`** as the base branch. Maintainer reference: [`.github/AGENT_GUIDE.md`](.github/AGENT_GUIDE.md).
 - **Fork → branch → PR** into [`NCAR/MPAS-Model-CI`](https://github.com/NCAR/MPAS-Model-CI) with base **`master`** (not the upstream `MPAS-Dev/MPAS-Model` fork unless that is intentional).
 - **Test another MPAS fork or commit:** Actions → **Cross-Repo Test** or use **`workflow_dispatch`** on **Ensemble Consistency Test (ECT)**, **coverage**, or **ect-ensemble-gen** with `mpas-repository` / `mpas-ref`. Details: [`.github/docs/testing-upstream-commits.md`](.github/docs/testing-upstream-commits.md).
-- **GPU ECT, GPU BFB, and Nsight profiling** are **manual dispatch only** on self-hosted runners; coordinate with maintainers before relying on them during an event.
+- **GPU ECT** (`test-gpu-mpich` / `test-gpu-openmpi`) runs on **push** and **in-repo PRs** targeting **`hackathon-*`** (fork PRs skip GPU until a maintainer merges — merge **push** then runs GPU). **GPU BFB** and **Nsight profiling** stay **manual dispatch**; coordinate with maintainers as needed.
 
 The Model for Prediction Across Scales (MPAS) is a collaborative project for
 developing atmosphere, ocean, and other earth-system simulation components for
