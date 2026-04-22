@@ -28,7 +28,7 @@ on:
         default: '4'
         type: string
       run_duration:
-        description: config_run_duration only (namelist dt unchanged). Default 0_01:00:00 = three timesteps for stock 240km case (config_dt=1200s). Override for other resolutions (must be at least one timestep for that case config_dt).
+        description: config_run_duration
         required: false
         default: '0_01:00:00'
         type: string

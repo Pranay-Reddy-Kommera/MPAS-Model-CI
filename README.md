@@ -35,7 +35,7 @@ Thanks to Teo Price-Broncucia and Allison Baker for their help on ensemble consi
 
 ### Additional testing 
 
-Bit-for-bit (BFB) workflows compare history output in single precision for CPU runs (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on manual dispatch (and some callers also run on push to `feature-ci-bfb`). **GPU BFB** workflows (`bfb-io-gpu`, `bfb-decomp-gpu`) use NVHPC + CUDA + OpenACC, double precision, CIRRUS runners, and only `workflow_dispatch` — same policy as the GPU ECT subset.
+Bit-for-bit (BFB) workflows compare history output in single precision for CPU runs (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on **`workflow_dispatch`**, and CPU BFB callers also run on push to **`hackathon`**, **`hackathon/**`**, or legacy **`feature-ci-bfb`**. **GPU BFB** workflows (`bfb-io-gpu`, `bfb-decomp-gpu`) use NVHPC + CUDA + OpenACC, double precision, CIRRUS runners, and only `workflow_dispatch` — same policy as the GPU ECT subset.
 
 | Test | Status |
 |------|--------|
@@ -47,6 +47,13 @@ Bit-for-bit (BFB) workflows compare history output in single precision for CPU r
 
 Container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
 Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-config.env`](.github/ci-config.env).
+
+### Hackathon quick start
+
+- Use **`master`** as the base branch. Maintainer reference: [`.github/AGENT_GUIDE.md`](.github/AGENT_GUIDE.md).
+- **Fork → branch → PR** into [`NCAR/MPAS-Model-CI`](https://github.com/NCAR/MPAS-Model-CI) with base **`master`** (not the upstream `MPAS-Dev/MPAS-Model` fork unless that is intentional).
+- **Test another MPAS fork or commit:** Actions → **Cross-Repo Test** or use **`workflow_dispatch`** on **Ensemble Consistency Test (ECT)**, **coverage**, or **ect-ensemble-gen** with `mpas-repository` / `mpas-ref`. Details: [`.github/docs/testing-upstream-commits.md`](.github/docs/testing-upstream-commits.md).
+- **GPU ECT, GPU BFB, and Nsight profiling** are **manual dispatch only** on self-hosted runners; coordinate with maintainers before relying on them during an event.
 
 The Model for Prediction Across Scales (MPAS) is a collaborative project for
 developing atmosphere, ocean, and other earth-system simulation components for

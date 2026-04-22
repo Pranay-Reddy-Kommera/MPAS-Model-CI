@@ -28,7 +28,8 @@ runs:
       uses: actions/cache@v5
       with:
         path: ${{ github.workspace }}/.cache/nsight-systems-rpms
-        key: nsight-cli-${{ steps.nsys_ver.outputs.version }}-rhel9-${{ runner.arch }}-${{ hashFiles('.github/scripts/install-nsight-systems-cli.sh', '.github/scripts/resolve-nsys.sh') }}
+        # Prefix is what you search for under repo Settings → Actions → Caches (not "nsys build"; we cache .rpm files)
+        key: nsight-systems-cli-rpms-v${{ steps.nsys_ver.outputs.version }}-rhel9-${{ runner.arch }}-${{ hashFiles('.github/scripts/install-nsight-systems-cli.sh', '.github/scripts/resolve-nsys.sh') }}
 
     - name: Install nsight-systems-cli
       shell: bash
@@ -37,3 +38,19 @@ runs:
       run: |
         chmod +x .github/scripts/install-nsight-systems-cli.sh
         bash .github/scripts/install-nsight-systems-cli.sh
+
+    - name: Nsight RPM cache (for Actions cache UI)
+      shell: bash
+      run: |
+        {
+          echo "### Nsight Systems CLI — RPM cache"
+          echo ""
+          echo "This caches **downloaded NVIDIA RPMs** in \`.cache/nsight-systems-rpms/\`, not a standalone \`nsys\` build. After \`dnf install\`, \`nsys\` is on the container filesystem."
+          echo ""
+          echo "In **Settings → Actions → Caches**, search for keys starting with \`nsight-systems-cli-rpms-\`."
+          echo ""
+          echo "- **cache-hit** (this run): \`${{ steps.cache-nsys.outputs.cache-hit }}\`"
+      } >> "${GITHUB_STEP_SUMMARY}"
+        if [ -d .cache/nsight-systems-rpms ]; then
+          echo "- **RPM dir size:** \`$(du -sh .cache/nsight-systems-rpms 2>/dev/null || echo unknown)\`" >> "${GITHUB_STEP_SUMMARY}"
+        fi

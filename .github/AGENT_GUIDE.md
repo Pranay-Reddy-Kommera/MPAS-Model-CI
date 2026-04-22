@@ -67,7 +67,7 @@ Current tags: `testdata-240km-v1`, `testdata-120km-v1`, `ect-summary-v1`, `ect-r
 
 - **`master`** — default branch, mirrors upstream MPAS-Model. Workflow files must exist here for the `workflow_dispatch` UI button to appear.
 - **`develop`** — upstream develop branch.
-- **`feature-ci-cleanup`** — active development branch for CI improvements. PR #18 targets master.
+- **Topic branches** — fork from `master` for changes. CPU BFB callers (`bfb-io.yml`, `bfb-decomp.yml`) also run on push to `hackathon`, `hackathon/**`, or legacy `feature-ci-bfb` for rapid iteration.
 
 ## Workflow Architecture
 
@@ -210,7 +210,7 @@ GitHub Actions runs bash with `set -e -o pipefail`:
 
 ## Cross-Repo Testing
 
-Workflows accept `mpas-repository` and `mpas-ref` inputs for testing upstream MPAS-Dev commits. The `checkout-mpas-source` action handles the two-step checkout and CI overlay. See `.github/docs/testing-upstream-commits.md`.
+Workflows accept `mpas-repository` and `mpas-ref` inputs for testing upstream MPAS-Dev commits. The `checkout-mpas-source` action handles the two-step checkout and CI overlay. Primary multi-compiler entry point: **`test-cross-repo.yml`**. See `.github/docs/testing-upstream-commits.md`.
 
 ## Security
 

@@ -14,15 +14,18 @@ the build/run/validate pipeline works unchanged.
 
 ## Supported Workflows
 
-All five CI workflows support cross-repo testing via `workflow_dispatch` inputs:
+These workflows accept **`mpas-repository`** and **`mpas-ref`** (or require them) on **`workflow_dispatch`**:
 
-| Workflow | File | Description |
-|----------|------|-------------|
-| (GitHub Actions) Build All, Run NoGPU | `test-ga-nogpu.yml` | Full compiler/MPI/IO matrix on GitHub runners |
-| (CIRRUS) NVHPC GPU vs CPU | `test-cirrus-nvhpc.yml` | NVHPC builds on self-hosted GPU runners |
-| Ensemble Consistency Test (ECT) | `ect-test.yml` | Quick 3-member ECT validation |
-| ECT Ensemble Generation | `ect-ensemble-gen.yml` | Generate new ensemble summary (expensive) |
-| Code Coverage | `coverage.yml` | GCC coverage build + Codecov upload |
+| Workflow (Actions UI name) | File | Notes |
+|-----------------------------|------|--------|
+| Cross-Repo Test | `test-cross-repo.yml` | CPU compiler matrix (GCC, NVHPC, OneAPI) against an external repo/ref. Primary entry point for multi-compiler upstream checks. |
+| Ensemble Consistency Test (ECT) | `ect-test.yml` | 3-member ECT on GitHub-hosted runners; optional cross-repo inputs. |
+| ECT Ensemble Generation | `ect-ensemble-gen.yml` | Expensive ensemble summary generation; optional cross-repo inputs. |
+| Code Coverage | `coverage.yml` | GCC coverage + Codecov; optional cross-repo inputs. |
+
+Per-compiler subset workflows (e.g. `test-gcc-mpich.yml`) do **not** expose cross-repo inputs on their own; use **Cross-Repo Test** or call `_test-compiler.yml` from a wrapper that passes `mpas-repository` / `mpas-ref`.
+
+**GPU** ECT (`_test-gpu.yml`) does **not** support external repo checkout until the cross-repo inputs on CIRRUS are re-enabled (see comments in `_test-gpu.yml`).
 
 ## How to Trigger
 
@@ -67,26 +70,26 @@ All five CI workflows support cross-repo testing via `workflow_dispatch` inputs:
 You can also trigger workflows from the command line with `gh`:
 
 ```bash
-# Test MPAS-Dev/MPAS-Model develop branch with the full test suite
-gh workflow run test-ga-nogpu.yml \
+# CPU matrix (GCC + NVHPC + OneAPI) against MPAS-Dev develop
+gh workflow run test-cross-repo.yml \
   -R NCAR/MPAS-Model-CI \
-  --ref feature-ci-test-cases \
+  --ref master \
   -f mpas-repository=MPAS-Dev/MPAS-Model \
   -f mpas-ref=develop
 
-# Test a specific commit with ECT
+# ECT against a specific commit (empty mpas-repository = this repo)
 gh workflow run ect-test.yml \
   -R NCAR/MPAS-Model-CI \
-  --ref feature-ci-test-cases \
+  --ref master \
   -f mpas-repository=MPAS-Dev/MPAS-Model \
   -f mpas-ref=a1b2c3d4e5f67890abcdef1234567890abcdef12
 
-# Run coverage on a tagged release
+# Coverage on a tagged release
 gh workflow run coverage.yml \
   -R NCAR/MPAS-Model-CI \
-  --ref feature-ci-test-cases \
+  --ref master \
   -f mpas-repository=MPAS-Dev/MPAS-Model \
-  -f mpas-ref=v8.3.0
+  -f mpas-ref=v8.4.0
 ```
 
 Note: `--ref` specifies which branch of **MPAS-Model-CI** to use for the
