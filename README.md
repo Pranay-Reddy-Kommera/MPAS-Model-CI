@@ -31,7 +31,7 @@ Thanks to Teo Price-Broncucia and Allison Baker for their help on ensemble consi
 
 ### Additional testing 
 
-Bit-for-bit (BFB) workflows compare history output in single precision for CPU runs (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). They run on **`workflow_dispatch`**, and CPU BFB callers also run on push to **`hackathon-*`**, **`hackathon`**, **`hackathon/**`**, or legacy **`feature-ci-bfb`**. **GPU BFB** workflows use NVHPC + CUDA + OpenACC where applicable, double precision for GPU-side callers, and CIRRUS for OpenACC build/run. The `bfb-io-gpu` and `bfb-decomp-gpu` workflows are `workflow_dispatch` only, while `bfb-nvhpc-cpu-vs-gpu` currently also includes a `pull_request` trigger.
+Bit-for-bit (BFB) workflows compare history output in single precision for CPU runs (240km case; see the BFB section in [`.github/ci-config.env`](.github/ci-config.env)). 
 
 | Test | Status |
 |------|--------|
@@ -44,13 +44,6 @@ Bit-for-bit (BFB) workflows compare history output in single precision for CPU r
 
 Container images are from [ncarcisl/hpcdev](https://hub.docker.com/r/ncarcisl/hpcdev-x86_64).
 Image tags, compiler mappings, and MPI flags are configured in [`.github/ci-config.env`](.github/ci-config.env).
-
-### Hackathon quick start
-
-- Use **`master`** as the base branch. Shared CI settings and container tags are in [`.github/ci-config.env`](.github/ci-config.env); reusable workflows live under [`.github/workflows/`](.github/workflows/).
-- **Fork → branch → PR** into [`NCAR/MPAS-Model-CI`](https://github.com/NCAR/MPAS-Model-CI) with base **`master`** (not the upstream `MPAS-Dev/MPAS-Model` fork unless that is intentional).
-- **Test another MPAS fork or commit:** Actions → **Cross-Repo Test** or use **`workflow_dispatch`** on **Ensemble Consistency Test (ECT)**, **coverage**, or **ect-ensemble-gen** with `mpas-repository` / `mpas-ref`. Details: [`.github/docs/testing-upstream-commits.md`](.github/docs/testing-upstream-commits.md).
-- **GPU ECT** (`test-gpu-mpich` / `test-gpu-openmpi`) is **`workflow_dispatch` only** (CIRRUS self-hosted — not tied to `hackathon-*` pushes). **GPU BFB** and **Nsight profiling** are also **manual dispatch**; coordinate with maintainers as needed.
 
 The Model for Prediction Across Scales (MPAS) is a collaborative project for
 developing atmosphere, ocean, and other earth-system simulation components for
