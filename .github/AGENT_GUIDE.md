@@ -121,7 +121,7 @@ Key settings:
 - `CONTAINER_COMPILER_{name}` — name mappings when image tags differ (e.g., `gcc` → `gcc14`)
 - `MAKE_TARGET_{compiler}` — maps CI names to Makefile targets
 - `NVHPC_EXTRA_MAKE_FLAGS` / `ONEAPI_EXTRA_MAKE_FLAGS` — compiler-specific build workarounds
-- `OPENMPI_RUN_FLAGS` / `MPICH_RUN_ENV_*` — MPI runtime settings
+- `OPENMPI_RUN_FLAGS` — extra `mpirun` flags for OpenMPI in containers (root + oversubscribe). MPICH needs no equivalent. Comment in `ci-config.env` lists the consumer sites for adding analogous flags later.
 - `RELEASE_TESTDATA_{RES}` — GitHub release tag for `{resolution}.tar.gz` test archives (`RES` uppercased, `-` → `_`)
 - `ECT_*` — ECT resolution, perturbation, summary/restart filenames, excluded-vars path, etc.
 - The ECT release tag (`ect-v{MPAS_VERSION}`) is **not** stored here; it is derived at runtime from `src/core_atmosphere/Registry.xml` by the `mpas-version` composite action (see below). This guarantees the writer (`ect-ensemble-gen.yml`) and readers (`_test-compiler.yml`, `_test-gpu.yml`, `ect-test.yml`, `validate-ect`) can never drift apart.
@@ -200,7 +200,7 @@ Key constraints:
 - **Perturbation magnitude**: O(1e-14) for theta, requires double precision
 - **Spin-up restart**: cold-start `init.nc` has zero hydrometeors. Ensemble generation runs 24h unperturbed first, then perturbs from the restart.
 - **PyCECT minimum members**: ensemble size must be >= number of output variables (~48). Default: 200.
-- **Time slice**: always extract last slice (`--tslice -1`) — slice 0 in cold-start mode is the unintegrated initial state.
+- **Time slice**: `run-perturb-mpas` invokes `trim_history.py` with `--tslice (Time.size - 1)`, producing files with exactly **one** time dimension (`Time=1`). PyCECT (`pyCECT.py` and `pyEnsSumMPAS.py`) is then called with `--tslice 0` — the only valid index in a single-slice file. There is no `ECT_TSLICE` knob in `ci-config.env`; changing the effective slice would require editing `run-perturb-mpas` (not config). Slice 0 in a cold-start (untrimmed) run is the unintegrated initial state, which is why we trim before validation.
 - ECT parameters and paths in `.github/ci-config.env` (`ECT_*`, `ECT_EXCLUDED_VARS`, `PYCECT_TAG`); the ECT release tag itself is derived at runtime from `Registry.xml` via the `mpas-version` composite action.
 
 ## Shell Scripting Notes
