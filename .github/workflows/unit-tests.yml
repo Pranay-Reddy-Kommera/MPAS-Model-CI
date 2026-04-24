@@ -17,7 +17,7 @@ on:
       - 'tests/**'
       - '.github/workflows/unit-tests.yml'
   push:
-    branches: [master, develop, hack26, 'hack26/**']
+    branches: [master, develop]
     paths:
       - 'src/**'
       - 'tests/**'
